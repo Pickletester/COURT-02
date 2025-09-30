@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>TB1-SAFE Court Display (v2)</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=864, initial-scale=1" />
+  <style>
+    html, body { margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; background:#0f1220; font-family: Arial, Helvetica, sans-serif; color:#fff; }
+    .graphic-bar{ position:fixed; left:0; right:0; bottom:0; height:96px;
+      background:linear-gradient(90deg,#14203a,#22335d 70%);
+      display:grid; grid-template-columns:1.2fr 2.4fr 1.0fr 2.2fr 1.2fr;
+      gap:6px; padding:6px 8px; box-sizing:border-box; z-index:1; }
+    .section{ position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; border-radius:8px; }
+    .compat-bg{ position:absolute; left:4px; right:4px; top:4px; bottom:4px; background:#000; opacity:.78; border-radius:8px; z-index:0; pointer-events:none; }
+    #court-number .compat-bg{ display:none !important; }
+    .label{ font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.08em; z-index:2; margin-bottom:2px; color:#d4e5fd; }
+    #current-event .label{ color:#6cff6c;} #next-event .label{ color:#ffe56b;}
+    .value{ font-weight:800; z-index:2; text-align:center; line-height:1.05; color:#fff; padding:0 6px; }
+    #current-event .value,#next-event .value{ font-size:16px; white-space:normal; overflow-wrap:anywhere; word-break:break-word; padding:0 8px 4px; }
+    #countdown .value{ font-size:22px;} #current-time .value{ font-size:18px;}
+    #court-number{ display:flex; align-items:center; justify-content:center;}
+    #court-number .value{ font-size:62px; font-weight:900; padding:4px 14px; letter-spacing:.02em; border:2px solid #fff; border-radius:10px;
+      text-shadow:0 1px 2px rgba(0,0,0,.4); background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03)); color:#fff; line-height:1; }
+    .err{ color:#ff808e; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="graphic-bar" id="bar">
+    <div id="court-number" class="section"><div class="value" id="court-val">1</div></div>
+    <div id="current-event" class="section"><div class="compat-bg"></div><div class="label">In Progress</div><div class="value" id="cur-val">Loading…</div></div>
+    <div id="countdown" class="section"><div class="compat-bg"></div><div class="label">Time Left</div><div class="value" id="cd-val">--</div></div>
+    <div id="next-event" class="section"><div class="compat-bg"></div><div class="label">Upcoming</div><div class="value" id="next-val">Loading…</div></div>
+    <div id="current-time" class="section"><div class="compat-bg"></div><div class="label">Current Time</div><div class="value" id="clock">--:--</div></div>
+  </div>
+
+<script>
+function qs(name){var m=(location.search||'').match(new RegExp('[?&]'+name+'=([^&]+)'));return m?decodeURIComponent(m[1]):null;}
+function pad(n){return (n<10?'0':'')+n;}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function toHM(d){var h=d.getHours(),m=d.getMinutes(),ampm=h>=12?'PM':'AM';h=h%12;if(h===0)h=12;return h+':'+pad(m)+' '+ampm;}
+function parseTimeAny(s){if(!s)return null;var d=new Date(s);if(!isNaN(d.getTime()))return d;var m=/^(\d{1,2}):(\d{2})$/.exec(String(s));if(m){var n=new Date();n.setHours(parseInt(m[1],10),parseInt(m[2],10),0,0);return n;}return null;}
+function xhrJSON(url, timeoutMs, cb){try{var x=new XMLHttpRequest();x.open('GET',url,true);x.timeout=timeoutMs||6000;x.onreadystatechange=function(){if(x.readyState===4){if(x.status>=200&&x.status<300){try{cb(null,JSON.parse(x.responseText));}catch(e){cb(e);}}else{cb(new Error('HTTP '+x.status));}}};x.onerror=function(){cb(new Error('network'));};x.ontimeout=function(){cb(new Error('timeout'));};x.send();}catch(e){cb(e);}}
+
+var BUCKET={tokens:2,last:Date.now()};setInterval(function(){var now=Date.now();if(now-BUCKET.last>=60000){BUCKET.tokens=2;BUCKET.last=now;}},1000);
+function takeToken(cb){(function wait(){if(BUCKET.tokens>0){BUCKET.tokens--;cb();}else{setTimeout(wait,500);}})();}
+
+var ORG_MEMBER_ID=qs('orgMemberId')||'12674';
+var COURT_ID=qs('court')||'1'; document.getElementById('court-val').innerHTML=COURT_ID;
+function tickClock(){document.getElementById('clock').innerHTML=toHM(new Date());} tickClock(); setInterval(tickClock,1000);
+
+function buildUrls(){var day=ymd(new Date());return{
+  listactive:'https://api.courtreserve.com/api/v1/reservationreport/listactive?orgMemberId='+ORG_MEMBER_ID+'&reservationsFromDate='+day+'&reservationsToDate='+day+'&courtId='+COURT_ID,
+  eventlist:'https://api.courtreserve.com/api/v1/eventcalendar/eventlist?orgMemberId='+ORG_MEMBER_ID+'&startDate='+day+'T00:00:00&endDate='+day+'T23:59:59&courtId='+COURT_ID
+};}
+
+function norm(r){if(!r)return[];if(r.Data&&r.Data.push)return r.Data; if(r.items&&r.items.push)return r.items; if(r.push)return r; return[];}
+function byStart(a,b){var sa=parseTimeAny(a.Start||a.start||a.startTime),sb=parseTimeAny(b.Start||b.start||b.startTime);if(!sa&&!sb)return 0;if(!sa)return 1;if(!sb)return -1;return sa-sb;}
+function choose(items){var now=Date.now(),cur=null,nxt=null;items.sort(byStart);for(var i=0;i<items.length;i++){var it=items[i];var s=parseTimeAny(it.Start||it.start||it.StartTime||it.startTime);var e=parseTimeAny(it.End||it.end||it.EndTime||it.endTime);if(!s||!e)continue;var ss=s.getTime(),ee=e.getTime();if(now>=ss&&now<ee){cur=it;break;}if(ss>now){nxt=it;break;}}if(!cur){for(var j=0;j<items.length;j++){var it2=items[j];var s2=parseTimeAny(it2.Start||it2.start||it2.StartTime||it2.startTime);if(s2&&s2.getTime()>now){nxt=it2;break;}}}else{for(var k=0;k<items.length;k++){var it3=items[k];var s3=parseTimeAny(it3.Start||it3.start||it3.StartTime||it3.startTime);if(s3&&s3.getTime()>now){nxt=it3;break;}}}return{current:cur,next:nxt};}
+function nameFor(it){return (it.Name||it.name||it.PlayerNames||it.EventName||it.Title||'').toString();}
+function timeRange(it){var s=parseTimeAny(it.Start||it.start||it.StartTime||it.startTime);var e=parseTimeAny(it.End||it.end||it.EndTime||it.endTime);if(!s||!e)return'';return toHM(s)+'–'+toHM(e);}
+
+var cdTimer=null; function startCD(it){if(cdTimer){clearInterval(cdTimer);}var e=parseTimeAny(it&&(it.End||it.end||it.EndTime||it.endTime));var el=document.getElementById('cd-val');if(!e){el.innerHTML='--';return;}function tick(){var ms=e.getTime()-Date.now();if(ms<=0){el.innerHTML='00:00';clearInterval(cdTimer);return;}var sec=Math.floor(ms/1000),mm=Math.floor(sec/60),ss=sec%60;el.innerHTML=pad(mm)+':'+pad(ss);}tick();cdTimer=setInterval(tick,1000);}
+
+function refresh(){
+  var u=buildUrls();
+  takeToken(function(){ xhrJSON(u.listactive, 6000, function(err, r1){ window.__reservations = err?[]:norm(r1); decide(); }); });
+  takeToken(function(){ xhrJSON(u.eventlist, 6000, function(err, r2){ window.__events = err?[]:norm(r2); decide(); }); });
+}
+function decide(){
+  if (typeof window.__reservations==='undefined' || typeof window.__events==='undefined') return;
+  var combo=(window.__reservations||[]).concat(window.__events||[]);
+  var pick=choose(combo); var curEl=document.getElementById('cur-val'); var nextEl=document.getElementById('next-val');
+  if(pick.current){ curEl.innerHTML=nameFor(pick.current)+' • '+timeRange(pick.current); startCD(pick.current); } else { curEl.innerHTML='—'; document.getElementById('cd-val').innerHTML='--'; }
+  if(pick.next){ nextEl.innerHTML=nameFor(pick.next)+' • '+timeRange(pick.next); } else { nextEl.innerHTML='—'; }
+}
+refresh(); setInterval(refresh, 60000);
+</script>
+</body>
+</html>
