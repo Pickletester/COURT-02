@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>TB1 Diag v6 — ES5 + XHR</title>
+<style>body{font-family:Arial;background:#111;color:#eee;margin:0;padding:16px} .ok{color:#8fff9f} .bad{color:#ff6b7a} .box{background:#1b1b1b;border:1px solid #333;padding:12px;border-radius:10px;margin:10px 0}</style>
+</head><body>
+<h1>TB1 Diag v6 — ES5 + XHR</h1>
+<div class="box">
+  <div id="net"></div>
+  <div id="img"></div>
+  <div id="cr1"></div>
+  <div id="cr2"></div>
+</div>
+<script>
+function ymd(d){function p(n){return (n<10?'0':'')+n;} return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function xhr(url, cb){
+  try{
+    var x=new XMLHttpRequest();
+    x.open('GET', url, true);
+    x.timeout=4000;
+    x.onreadystatechange=function(){ if(x.readyState===4){ cb(null, {status:x.status, body:x.responseText}); } };
+    x.onerror=function(){ cb(new Error('network')); };
+    x.ontimeout=function(){ cb(new Error('timeout')); };
+    x.send();
+  }catch(e){ cb(e); }
+}
+document.getElementById('net').innerHTML = 'UserAgent: '+navigator.userAgent;
+var testImg = new Image();
+testImg.onload=function(){ document.getElementById('img').innerHTML = '<span class="ok">IMG https://api.courtreserve.com loaded</span>'; };
+testImg.onerror=function(){ document.getElementById('img').innerHTML = '<span class="bad">IMG failed (DNS/TLS?)</span>'; };
+testImg.src = 'https://api.courtreserve.com/favicon.ico?_=' + Date.now();
+
+var day=ymd(new Date());
+var org = (location.search.match(/orgMemberId=([^&]+)/)||[])[1] || '12674';
+var court = (location.search.match(/court=([^&]+)/)||[])[1] || '1';
+
+var u1='https://api.courtreserve.com/api/v1/reservationreport/listactive?reservationsFromDate='+day+'&reservationsToDate='+day+'&courtId='+court;
+var u2='https://api.courtreserve.com/api/v1/eventcalendar/eventlist?orgMemberId='+org+'&startDate='+day+'T00:00:00&endDate='+day+'T23:59:59&courtId='+court;
+
+xhr(u1, function(e,r){
+  document.getElementById('cr1').innerHTML = e ? '<span class="bad">listactive: '+e+'</span>' : '<span class="ok">listactive HTTP '+r.status+'</span>';
+});
+xhr(u2, function(e,r){
+  document.getElementById('cr2').innerHTML = e ? '<span class="bad">eventlist: '+e+'</span>' : '<span class="ok">eventlist HTTP '+r.status+'</span>';
+});
+</script>
+</body></html>
