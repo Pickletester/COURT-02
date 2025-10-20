@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>🕷️ 🎃 Court Display — 2 (HYBRID • SMART • Reliable • FailSafe v2) (Halloween) (Purple-Orange-Black) [TB1 LEGACY]</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+
+  /* ===== HALLOWEEN THEME ===== */
+  :root {
+    --bar-height: 78px;
+    --h-orange: #ff7a00;
+    --h-deep: #0b0b12;
+    --h-purple: #2b143b;
+    --h-glow: #ffb347;
+  }
+  body { background: linear-gradient(180deg, #000000 0%, #12010a 60%, #ff7a00 100%); }
+  .graphic-bar{
+    background:linear-gradient(90deg, #12010a, #31123b 40%, #ff7a00 100%);
+    box-shadow: inset 0 0 40px rgba(255,122,0,0.08), 0 0 20px rgba(255,122,0,0.1);
+    border-top: 2px solid rgba(255,122,0,0.25);
+  }
+  .section .compat-bg{ background:rgba(0,0,0,0.55); border:1px solid rgba(255,122,0,0.12); }
+  #court-number .value{
+    color:#ff7a00;
+    border-color:#ff7a00;
+    text-shadow: 0 0 10px rgba(255,122,0,0.45), 0 0 2px rgba(255,122,0,0.8);
+    background:linear-gradient(180deg, rgba(255,122,0,.08), rgba(255,122,0,.02));
+  }
+  #current-event .label, #next-event .label, #countdown .label, #current-time .label{
+    color:#ffb347;
+    letter-spacing:.12em;
+  }
+  #current-event .value, #next-event .value, #countdown .value, #current-time .value{
+    color:#f7e7d3;
+    text-shadow: 0 0 6px rgba(255,122,0,.25);
+  }
+  /* spider web corners */
+  .graphic-bar:before, .graphic-bar:after {
+    content: "";
+    position: absolute;
+    width: 120px; height: 120px;
+    border: 1px solid rgba(255,122,0,0.18);
+    border-radius: 50%;
+    top: -60px;
+    filter: drop-shadow(0 0 6px rgba(255,122,0,0.25));
+  }
+  .graphic-bar:before { left: -40px; }
+  .graphic-bar:after  { right: -40px; }
+  /* pumpkins before labels */
+  #current-event .label::before{ content:"🎃 "; }
+  #next-event .label::before{ content:"🕸️ "; }
+  #countdown .label::before{ content:"⏳ "; }
+  #current-time .label::before{ content:"🕯️ "; }
+  /* under-minute pulse: orange */
+  #countdown.under-minute .cdFill{ background:#ff7a00; }
+  #countdown.under-minute .cdBorder{ border-color: rgba(255,122,0,var(--pulse-min)); }
+
+  /* subtle floating bats */
+  .bat {
+    position: fixed;
+    width: 18px; height: 8px;
+    background: radial-gradient(6px 4px at 4px 4px, #111 40%, transparent 41%), radial-gradient(6px 4px at 14px 4px, #111 40%, transparent 41%);
+    left: -40px;
+    top: 20%;
+    opacity: .25;
+    animation: fly 14s linear infinite;
+    z-index: 5;
+  }
+  .bat.b2{ top: 35%; animation-duration: 18s; animation-delay: 3s; opacity:.28; }
+  .bat.b3{ top: 50%; animation-duration: 22s; animation-delay: 6s; opacity:.22; }
+  @keyframes fly {
+    0%   { transform: translateX(0) translateY(0) }
+    20%  { transform: translateX(20vw) translateY(-10px) }
+    40%  { transform: translateX(40vw) translateY(6px) }
+    60%  { transform: translateX(60vw) translateY(-6px) }
+    80%  { transform: translateX(80vw) translateY(10px) }
+    100% { transform: translateX(105vw) translateY(0) }
+  }
+
+    html, body { background: linear-gradient(180deg, #000000 0%, #12010a 60%, #ff7a00 100%); }
+    :root { --bar-height: 72px; --pulse-dur: 900ms; --pulse-min: .12; --pulse-max: .45; --pulse-border: 3px; --global-min:.05; --global-max:.18; }
+    .graphic-bar{ position:fixed; left:0; right:0; bottom:0; height:var(--bar-height); background:linear-gradient(90deg, #12010a, #31123b 40%, #ff7a00 100%); display:grid; grid-template-columns:1.3fr 2.2fr 1.1fr 2.1fr 1.3fr; gap:4px; padding:4px 6px; box-sizing:border-box; z-index:1000; }
+    .section{ position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; border-radius:6px; isolation:isolate; }
+    .section .compat-bg{ position:absolute; left:3px; right:3px; top:3px; bottom:3px; background:#000; opacity:.78; border-radius:6px; z-index:0; pointer-events:none; }
+    #court-number .compat-bg{ display:none !important; }
+    .label{ font-weight:700; text-transform:uppercase; font-size:10px; letter-spacing:.08em; z-index:2; margin-bottom:1px; }
+    #current-event .label{ color:#6cff6c;} #next-event .label{ color:#ffe56b;} #countdown .label{ color:#d4e5fd;} #current-time .label{ color:#d4e5fd;}
+    .meta{ font-size:10px; color:#d8d8d8; opacity:.9; line-height:1.05; }
+    .value{ font-weight:800; z-index:2; text-align:center; line-height:1.05; color:#fff; padding:0 4px; }
+    #current-event .value,#next-event .value{ font-size:14px; max-height:none!important; overflow:visible!important; white-space:normal; overflow-wrap:anywhere; word-break:break-word; padding:0 6px 3px; align-self:center; }
+    #countdown .value{ font-size:20px;} #current-time .value{ font-size:16px;}
+    #court-number{ display:flex; align-items:center; justify-content:center;}
+    #court-number .value{ font-size:58px; font-weight:900; padding:2px 12px; letter-spacing:.02em; border:2px solid #fff; border-radius:8px; text-shadow:0 1px 2px rgba(0,0,0,.4); background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03)); color:#fff; line-height:1; }
+    #countdown .cdFill,#countdown .cdBorder{ position:absolute; left:2px; right:2px; top:2px; bottom:2px; border-radius:6px; pointer-events:none; z-index:1; display:none; transform-origin:center center; }
+    #countdown.under-minute .cdFill{ display:block; background:#ff0000; animation:pulseSmooth var(--pulse-dur) ease-in-out infinite; }
+    #countdown.under-minute .cdBorder{ display:block; border:var(--pulse-border) solid rgba(255,0,0,var(--pulse-min)); animation:borderSmooth var(--pulse-dur) ease-in-out infinite; }
+    @keyframes pulseSmooth{0%{opacity:var(--pulse-min);transform:scale(1)}50%{opacity:var(--pulse-max);transform:scale(1.03)}100%{opacity:var(--pulse-min);transform:scale(1)}}
+    @keyframes borderSmooth{0%{opacity:var(--pulse-min)}50%{opacity:var(--pulse-max)}100%{opacity:var(--pulse-min)}}
+    #globalPulse{ position:fixed; left:0; top:0; right:0; bottom:0; background:#ff0000; opacity:0; pointer-events:none; display:none; z-index:99999; }
+    body.global-under-minute #globalPulse{ display:block; animation:globalSmooth var(--pulse-dur) ease-in-out infinite; }
+    @keyframes globalSmooth{0%{opacity:var(--global-min)}50%{opacity:var(--global-max)}100%{opacity:var(--global-min)}}
+    body.global-under-minute #globalPulse, body.global-under-minute #countdown .cdFill, body.global-under-minute #countdown .cdBorder{ animation-delay:var(--pulse-phase,0ms); }
+    body.wait-net #clock::after{ content:""; } body.wait-net #clock{ color:#fff; }
+    body.local-fallback #clock::after{ content:""; } body.local-fallback #clock{ color:#fff; }
+    body.offline .graphic-bar{ background:linear-gradient(90deg, #12010a, #31123b 40%, #ff7a00 100%); }
+    body.offline #current-event .value, body.offline #next-event .value, body.offline #countdown .value, body.offline #current-time .value{ opacity:1!important; color:#fff!important; }
+    body.offline #countdown .cdFill, body.offline #countdown .cdBorder, body.offline #globalPulse{ display:none!important; }
+  </style>
+
+<script>
+// Safe court check: understands "Courts 7–10" / "Courts 7-10" / "Court #7" and ignores times.
+function __includesCourtSafe(raw, courtNo){
+  try{
+    const parts = [];
+    if (raw){
+      const fields = ['Courts','CourtName','ResourceName','ResourceNames','Resource','Description','Notes','Title','EventName','Name'];
+      for (const k of fields){ if (raw[k]) parts.push(String(raw[k])); }
+      if (Array.isArray(raw.Resources)) parts.push(raw.Resources.join(', '));
+    }
+    if (parts.length===0) return false;
+    const s = parts.join(' | ').toLowerCase().replace(/\u2013|\u2014/g,'-'); // normalize en/em dash
+    // 1) ranges: "courts 7-10"
+    let m, range=/\bcourts?\s*#?\s*(\d+)\s*-\s*(\d+)\b/g;
+    while((m=range.exec(s))){
+      const a=+m[1], b=+m[2];
+      const lo=Math.min(a,b), hi=Math.max(a,b);
+      if (courtNo>=lo && courtNo<=hi) return true;
+    }
+    // 2) lists: "courts 7,9"
+    let list=/\bcourts?\s*#?\s*((?:\d+\s*,\s*)*\d+)\b/g;
+    while((m=list.exec(s))){
+      const nums=m[1].split(/\s*,\s*/).map(x=>+x).filter(n=>!isNaN(n));
+      if (nums.includes(courtNo)) return true;
+    }
+    // 3) single: "court 7" / "court #7"
+    let single=/\bcourt\s*#?\s*(\d+)\b/g;
+    while((m=single.exec(s))){ if(+m[1]===courtNo) return true; }
+    return false;
+  }catch(e){ return false; }
+}
+</script>
+
+<!-- AUTO COURT MAP + FORCE INCLUDE HELPERS (ES5) -->
+<script>
+(function(){
+  // Category → default court ranges
+  var CATEGORY_COURT_MAP = [
+    { match: "clinic",       ranges: [[1,3]] },
+    { match: "round robin",  ranges: [[1,6]] },
+    { match: "league",       ranges: [[1,6]] },
+    { match: "lesson",       ranges: [[1,3]] }
+  ];
+
+  // Keyword → default court ranges
+  var KEYWORD_COURT_MAP = [
+    { match: "pickleball 101",  ranges: [[1,3]] },
+    { match: "beginner clinic", ranges: [[1,3]] },
+    { match: "intro clinic",    ranges: [[1,3]] }
+  ];
+
+  function _norm(s){ s=(s==null?"":String(s)); return s.toLowerCase().replace(/\s+/g," ").replace(/^\s+|\s+$/g,""); }
+  function _arrJoin(arr){ try{return arr.map(function(x){return (x&&x.name)?x.name:(x||"");}).join(", ");}catch(e){return "";} }
+  function _compositeText(raw){
+    try{
+      var parts=[]; if(!raw) raw={};
+      var fields=["Title","title","name","EventName","eventName","Name","Description","description","EventCategoryName","category","Location","location","ResourceName","resourceName"];
+      for(var i=0;i<fields.length;i++){ var k=fields[i]; if(raw[k]) parts.push(String(raw[k])); }
+      if (raw.resources && raw.resources.push) parts.push(_arrJoin(raw.resources));
+      if (raw.Resources && raw.Resources.push) parts.push(_arrJoin(raw.Resources));
+      return _norm(parts.join(" | "));
+    }catch(e){ return ""; }
+  }
+  function _courtInRanges(cno, ranges){
+    if(!(ranges && ranges.push)) return false;
+    for(var i=0;i<ranges.length;i++){ var r=ranges[i]; if(!(r && r.length===2)) continue; var a=Number(r[0]), b=Number(r[1]); if(a<=cno && cno<=b) return true; }
+    return false;
+  }
+  window.__categoryImpliesCourt = function(courtNo, raw){
+    var cat = _norm((raw && (raw.EventCategoryName || raw.category || raw.CategoryName)) || "");
+    var txt = _compositeText(raw);
+    var cno = Number(courtNo)||0;
+    for(var i=0;i<CATEGORY_COURT_MAP.length;i++){
+      var row = CATEGORY_COURT_MAP[i]; var key=_norm(row.match||""); if(!key) continue;
+      if (cat.indexOf(key)>=0 || txt.indexOf(key)>=0){ if (_courtInRanges(cno, row.ranges)) return true; }
+    }
+    return false;
+  };
+  window.__keywordImpliesCourt = function(courtNo, raw){
+    var txt = _compositeText(raw); var cno = Number(courtNo)||0;
+    for(var i=0;i<KEYWORD_COURT_MAP.length;i++){
+      var row = KEYWORD_COURT_MAP[i]; var key=_norm(row.match||""); if(!key) continue;
+      if (txt.indexOf(key)>=0){ if (_courtInRanges(cno, row.ranges)) return true; }
+    }
+    return false;
+  };
+  window.__tagCourtEligible = function(courtNo, items){
+    try{
+      if(!items || !items.push) return items;
+      for(var i=0;i<items.length;i++){
+        var it = items[i]||{}; var raw = it.raw || it; var eligible=false;
+        try{ if (__categoryImpliesCourt(courtNo, raw)) eligible=true; }catch(e){}
+        try{ if (!eligible && __keywordImpliesCourt(courtNo, raw)) eligible=true; }catch(e){}
+        if (eligible) it.__forceForCourt = true;
+      }
+      return items;
+    }catch(e){ return items; }
+  };
+})();
+</script>
+
+</head>
+<body class="wait-net">
+
+  <!-- Halloween bats -->
+  <div class="bat"></div><div class="bat b2"></div><div class="bat b3"></div>
+
+  <div class="graphic-bar" id="bar">
+    <div id="court-number" class="section"><div class="value" id="court-val">2</div></div>
+    <div id="current-event" class="section"><div class="compat-bg"></div><div class="label" id="cur-label">In Progress</div><div class="value" id="cur-val">Loading...</div></div>
+    <div id="countdown" class="section"><div class="compat-bg"></div><div class="label" id="cd-label">Time Left</div><div class="value" id="cd-val">--</div><div class="cdFill"></div><div class="cdBorder"></div></div>
+    <div id="next-event" class="section"><div class="compat-bg"></div><div class="label">Upcoming</div><div class="value" id="next-val">Loading next...</div></div>
+    <div id="current-time" class="section"><div class="compat-bg"></div><div class="label">Current Time</div><div class="value" id="clock">--:--</div></div>
+  </div>
+  <div id="globalPulse"></div>
+
+  <script>
+    <script>
+(function(){
+  var ORG_MEMBER_ID = "12674";
+  var AUTH_B64 = "Basic T3JnXzEyNjc0OjEyNjc0XzE4NWFmZGE3LTdiNGYtNGIwYS04YmEwLWE3OWVhYzc4ODExZA==";
+  var COURT_NO = (typeof window.COURT_NO==="number" && window.COURT_NO>0) ? window.COURT_NO : 1;
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function today(){ var d=new Date(); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function toHM(d){ var h=d.getHours(), m=("0"+d.getMinutes()).slice(-2), am=h>=12?"PM":"AM"; h=h%12||12; return h+":"+m+" "+am; }
+  function parseT(t, base){ if(!t) return null; if(Object.prototype.toString.call(t)==='[object Date]') return t; if(typeof t==='number') return new Date(t>1e12?t:t*1000); if(typeof t==='string'){ var m=t.match(/^\/Date\((\d+)\)\/$/i); if(m) return new Date(parseInt(m[1],10)); if(/^\d{1,2}:\d{2}(\s*[AP]M)?$/i.test(t)){ var a=t.trim().split(/\s+/), hm=a[0].split(':'), hh=parseInt(hm[0],10), mm=parseInt(hm[1],10), ampm=(a[1]||'').toUpperCase(); if(ampm==='PM'&&hh<12) hh+=12; if(ampm==='AM'&&hh===12) hh=0; var B=base||new Date(); return new Date(B.getFullYear(),B.getMonth(),B.getDate(),hh,mm,0,0);} var d=new Date(t); if(!isNaN(d.getTime())) return d; } return null; }
+  function pickArray(c){ if(!c) return []; if(c.push) return c; if(typeof c==='object'){ var k=['Data','data','Results','Items','Reservations','ReservationList']; for(var i=0;i<k.length;i++){ if(c[k[i]]&&c[k[i]].push) return c[k[i]]; } if(c.Data&&typeof c.Data==='object'){ for(i=0;i<k.length;i++){ if(c.Data[k[i]]&&c.Data[k[i]].push) return c.Data[k[i]]; } } } return []; }
+  function norm(s){ return (s==null?'':(''+s)).toLowerCase(); }
+  function composite(raw){ try{ var p=[], f=['Title','title','name','EventName','eventName','Name','Description','description','EventCategoryName','category','Location','location','ResourceName','resourceName']; for(var i=0;i<f.length;i++){ if(raw[f[i]]) p.push(String(raw[f[i]])); } return norm(p.join(' | ')); }catch(e){ return ''; } }
+  function containsCourt(text,n){ if(!text) return false; var s=text.replace(/\u2013|\u2014/g,'-'); var m,range=/\bcourts?\s*#?\s*(\d+)\s*-\s*(\d+)\b/g; while((m=range.exec(s))){ var a=+m[1], b=+m[2], lo=Math.min(a,b), hi=Math.max(a,b); if(n>=lo&&n<=hi) return true; } var list=/\bcourts?\s*#?\s*((?:\d+\s*,\s*)*\d+)\b/g; while((m=list.exec(s))){ var nums=m[1].split(/\s*,\s*/); for(var i=0;i<nums.length;i++){ if(+nums[i]===n) return true; } } var single=/\bcourt\s*#?\s*(\d+)\b/g; while((m=single.exec(s))){ if(+m[1]===n) return true; } return false; }
+  function categoryImplies(cn,raw){ var MAP=[{match:'clinic',ranges:[[1,3]]},{match:'round robin',ranges:[[1,6]]},{match:'league',ranges:[[1,6]]},{match:'lesson',ranges:[[1,3]]}]; var txt=composite(raw); for(var i=0;i<MAP.length;i++){ if(txt.indexOf(MAP[i].match)>=0){ for(var j=0;j<MAP[i].ranges.length;j++){ var a=MAP[i].ranges[j][0], b=MAP[i].ranges[j][1]; if(cn>=a&&cn<=b) return true; } } } return false; }
+  function keywordImplies(cn,raw){ var MAP=[{match:'pickleball 101',ranges:[[1,3]]},{match:'beginner clinic',ranges:[[1,3]]},{match:'intro clinic',ranges:[[1,3]]}]; var txt=composite(raw); for(var i=0;i<MAP.length;i++){ if(txt.indexOf(MAP[i].match)>=0){ for(var j=0;j<MAP[i].ranges.length;j++){ var a=MAP[i].ranges[j][0], b=MAP[i].ranges[j][1]; if(cn>=a&&cn<=b) return true; } } } return false; }
+  function includesCourt(raw,n){ var keys=['Courts','CourtName','ResourceName','ResourceNames','Resource','Description','Notes','Title','EventName','Name']; var parts=[],i; for(i=0;i<keys.length;i++){ if(raw&&raw[keys[i]]) parts.push(String(raw[keys[i]])); } if(raw&&raw.Resources&&raw.Resources.join) parts.push(raw.Resources.join(', ')); var txt=norm(parts.join(' | ')); if(containsCourt(txt,n)) return true; if(categoryImplies(n,raw)||keywordImplies(n,raw)) return true; return false; }
+  function getJSON(url, headers, cb){ try{ var xhr=new XMLHttpRequest(); xhr.open('GET',url,true); xhr.onreadystatechange=function(){ if(xhr.readyState===4){ if(xhr.status>=200&&xhr.status<300){ var data=null; try{ data=JSON.parse(xhr.responseText); }catch(e){ return cb(e); } return cb(null,data); } else { return cb(new Error('HTTP '+xhr.status)); } } }; if(headers){ for(var k in headers){ xhr.setRequestHeader(k, headers[k]); } } xhr.send(null); }catch(e){ cb(e); } }
+  var curEl=document.getElementById('cur-val'), nxtEl=document.getElementById('next-val'), cdEl=document.getElementById('cd-val'), cdLab=document.getElementById('cd-label');
+  function setCountdownDiff(ms){ if(!ms){ cdEl.textContent='--'; return; } var diff=ms-(new Date()).getTime(); if(diff<=0){ cdEl.textContent='--'; return; } var s=Math.floor(diff/1000), m=Math.floor(s/60), h=Math.floor(m/60); m=m%60; cdEl.textContent= h>0 ? (h+'h '+m+'m') : (m+'m'); }
+  function render(cur,nxt){ if(cur){ curEl.innerHTML=cur.name+'<div class=\"meta\">'+toHM(cur.start)+' - '+toHM(cur.end)+'</div>'; cdLab.textContent='Time Left'; setCountdownDiff(cur.end.getTime()); } else { curEl.textContent='No current event'; if(nxt){ cdLab.textContent='Time Until'; setCountdownDiff(nxt.start.getTime()); } else { cdLab.textContent='Time Left'; cdEl.textContent='--'; } } if(nxt){ nxtEl.innerHTML=nxt.name+'<div class=\"meta\">'+toHM(nxt.start)+' - '+toHM(nxt.end)+'</div>'; } else { nxtEl.textContent='No upcoming event'; } }
+  function refresh(){ var d=today(); var ev='https://api.courtreserve.com/api/v1/eventcalendar/eventlist?orgMemberId='+ORG_MEMBER_ID+'&startDate='+d+'T00:00:00&endDate='+d+'T23:59:59'; var rs='https://api.courtreserve.com/api/v1/reservationreport/listactive?orgMemberId='+ORG_MEMBER_ID+'&reservationsFromDate='+d+'T00:00:00&reservationsToDate='+d+'T23:59:59&includePlayers=true'; var E=[],R=[],done=0; function after(){ if(++done<2) return; var base=new Date(); E=E.map(function(x){ var nm=(x.EventName||x.Name||'Event'); var st=parseT(x.StartDateTime||x.StartTime||x.Start,base); var en=parseT(x.EndDateTime||x.EndTime||x.End,base); return {source:'event', raw:x, name:nm, start:st, end:en}; }).filter(function(it){return it.start&&it.end;}); R=R.map(function(x){ var st=parseT(x.StartTime||x.StartDateTime||x.Start,base); var en=parseT(x.EndTime||x.EndDateTime||x.End,base); var nm=(x.ReservationTypeName||x.Title||x.Description||'Reserved'); return {source:'reservation', raw:x, name:nm, start:st, end:en}; }).filter(function(it){return it.start&&it.end;}); var L=R.concat(E).filter(function(it){ return includesCourt(it.raw, COURT_NO); }); L.sort(function(a,b){ return a.start-b.start; }); var now=new Date(), cur=null, nxt=null; for(var i=0;i<L.length;i++){ var it=L[i]; if(!cur && now>=it.start && now<=it.end) cur=it; if(!nxt && now<it.start) nxt=it; } render(cur,nxt); }
+    getJSON(ev, {'Authorization':AUTH_B64}, function(err,data){ if(!err) E=pickArray(data); after(); });
+    getJSON(rs, {'Authorization':AUTH_B64}, function(err,data){ if(!err) R=pickArray(data); after(); });
+  }
+  function tick(){ var el=document.getElementById('clock'), d=new Date(), h=d.getHours(), m=('0'+d.getMinutes()).slice(-2), am=h>=12?'PM':'AM'; h=h%12||12; el.textContent=h+':'+m+' '+am; setTimeout(tick,1000); }
+  setTimeout(refresh, 100); setInterval(refresh, 30000); tick();
+})();
+</script>
+
+</body>
+</html>
