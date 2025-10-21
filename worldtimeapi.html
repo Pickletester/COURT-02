@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Court Display — 1 (TB1 Time • CourtReserve Only)</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; background:transparent; font-family: Arial, Helvetica, sans-serif; }
+    :root { --bar-height: 72px; --pulse-dur: 900ms; --pulse-min: .12; --pulse-max: .45; --pulse-border: 3px; --global-min:.05; --global-max:.18; }
+    .graphic-bar{ position:fixed; left:0; right:0; bottom:0; height:var(--bar-height); background:linear-gradient(90deg,#14203a,#22335d 70%); display:grid; grid-template-columns:1.3fr 2.2fr 1.1fr 2.1fr 1.3fr; gap:4px; padding:4px 6px; box-sizing:border-box; z-index:1000; }
+    .section{ position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; border-radius:6px; isolation:isolate; }
+    .section .compat-bg{ position:absolute; left:3px; right:3px; top:3px; bottom:3px; background:#000; opacity:.78; border-radius:6px; z-index:0; pointer-events:none; }
+    #court-number .compat-bg{ display:none !important; }
+    .label{ font-weight:700; text-transform:uppercase; font-size:10px; letter-spacing:.08em; z-index:2; margin-bottom:1px; }
+    #current-event .label{ color:#6cff6c;} #next-event .label{ color:#ffe56b;} #countdown .label{ color:#d4e5fd;} #current-time .label{ color:#d4e5fd;}
+    .meta{ font-size:10px; color:#d8d8d8; opacity:.9; line-height:1.05; }
+    .value{ font-weight:800; z-index:2; text-align:center; line-height:1.05; color:#fff; padding:0 4px; }
+    #current-event .value,#next-event .value{ font-size:14px; max-height:none!important; overflow:visible!important; white-space:normal; overflow-wrap:anywhere; word-break:break-word; padding:0 6px 3px; align-self:center; }
+    #countdown .value{ font-size:20px;} #current-time .value{ font-size:16px;}
+    #court-number{ display:flex; align-items:center; justify-content:center;}
+    #court-number .value{ font-size:58px; font-weight:900; padding:2px 12px; letter-spacing:.02em; border:2px solid #fff; border-radius:8px; text-shadow:0 1px 2px rgba(0,0,0,.4); background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03)); color:#fff; line-height:1; }
+    #countdown .cdFill,#countdown .cdBorder{ position:absolute; left:2px; right:2px; top:2px; bottom:2px; border-radius:6px; pointer-events:none; z-index:1; display:none; transform-origin:center center; }
+    #countdown.under-minute .cdFill{ display:block; background:#ff0000; animation:pulseSmooth var(--pulse-dur) ease-in-out infinite; }
+    #countdown.under-minute .cdBorder{ display:block; border:var(--pulse-border) solid rgba(255,0,0,var(--pulse-min)); animation:borderSmooth var(--pulse-dur) ease-in-out infinite; }
+    @keyframes pulseSmooth{0%{opacity:var(--pulse-min);transform:scale(1)}50%{opacity:var(--pulse-max);transform:scale(1.03)}100%{opacity:var(--pulse-min);transform:scale(1)}}
+    @keyframes borderSmooth{0%{opacity:var(--pulse-min)}50%{opacity:var(--pulse-max)}100%{opacity:var(--pulse-min)}}
+    #globalPulse{ position:fixed; left:0; top:0; right:0; bottom:0; background:#ff0000; opacity:0; pointer-events:none; display:none; z-index:99999; }
+    body.global-under-minute #globalPulse{ display:block; animation:globalSmooth var(--pulse-dur) ease-in-out infinite; }
+    @keyframes globalSmooth{0%{opacity:var(--global-min)}50%{opacity:var(--global-max)}100%{opacity:var(--global-min)}}
+  </style>
+
+<script>
+// Safe court check.
+function __includesCourtSafe(raw, courtNo){
+  try{
+    const parts = [];
+    if (raw){
+      const fields = ['Courts','CourtName','ResourceName','ResourceNames','Resource','Description','Notes','Title','EventName','Name'];
+      for (const k of fields){ if (raw[k]) parts.push(String(raw[k])); }
+      if (Array.isArray(raw.Resources)) parts.push(raw.Resources.join(', '));
+    }
+    if (parts.length===0) return false;
+    const s = parts.join(' | ').toLowerCase().replace(/\u2013|\u2014/g,'-'); // normalize en/em dash
+    // 1) ranges: "courts 7-10"
+    let m, range=/\bcourts?\s*#?\s*(\d+)\s*-\s*(\d+)\b/g;
+    while((m=range.exec(s))){
+      const a=+m[1], b=+m[2];
+      const lo=Math.min(a,b), hi=Math.max(a,b);
+      if (courtNo>=lo && courtNo<=hi) return true;
+    }
+    // 2) lists: "courts 7,9"
+    let list=/\bcourts?\s*#?\s*((?:\d+\s*,\s*)*\d+)\b/g;
+    while((m=list.exec(s))){
+      const nums=m[1].split(/\s*,\s*/).map(x=>+x).filter(n=>!isNaN(n));
+      if (nums.includes(courtNo)) return true;
+    }
+    // 3) single: "court 7" / "court #7"
+    let single=/\bcourt\s*#?\s*(\d+)\b/g;
+    while((m=single.exec(s))){ if(+m[1]===courtNo) return true; }
+    return false;
+  }catch(e){ return false; }
+}
+</script>
+
+<!-- AUTO COURT MAP + FORCE INCLUDE HELPERS (ES5) -->
+<script>
+(function(){
+  var CATEGORY_COURT_MAP = [
+    { match: "clinic",       ranges: [[1,3]] },
+    { match: "round robin",  ranges: [[1,6]] },
+    { match: "league",       ranges: [[1,6]] },
+    { match: "lesson",       ranges: [[1,3]] }
+  ];
+  var KEYWORD_COURT_MAP = [
+    { match: "pickleball 101",  ranges: [[1,3]] },
+    { match: "beginner clinic", ranges: [[1,3]] },
+    { match: "intro clinic",    ranges: [[1,3]] }
+  ];
+
+  function _norm(s){ s=(s==null?"":String(s)); return s.toLowerCase().replace(/\s+/g," ").replace(/^\s+|\s+$/g,""); }
+  function _arrJoin(arr){ try{return arr.map(function(x){return (x&&x.name)?x.name:(x||"");}).join(", ");}catch(e){return "";} }
+  function _compositeText(raw){
+    try{
+      var parts=[]; if(!raw) raw={};
+      var fields=["Title","title","name","EventName","eventName","Name","Description","description","EventCategoryName","category","Location","location","ResourceName","resourceName"];
+      for(var i=0;i<fields.length;i++){ var k=fields[i]; if(raw[k]) parts.push(String(raw[k])); }
+      if (raw.resources && raw.resources.push) parts.push(_arrJoin(raw.resources));
+      if (raw.Resources && raw.Resources.push) parts.push(_arrJoin(raw.Resources));
+      return _norm(parts.join(" | "));
+    }catch(e){ return ""; }
+  }
+  function _courtInRanges(cno, ranges){
+    if(!(ranges && ranges.push)) return false;
+    for(var i=0;i<ranges.length;i++){ var r=ranges[i]; if(!(r && r.length===2)) continue; var a=Number(r[0]), b=Number(r[1]); if(a<=cno && cno<=b) return true; }
+    return false;
+  }
+  window.__categoryImpliesCourt = function(courtNo, raw){
+    var cat = _norm((raw && (raw.EventCategoryName || raw.category || raw.CategoryName)) || "");
+    var txt = _compositeText(raw);
+    var cno = Number(courtNo)||0;
+    for(var i=0;i<CATEGORY_COURT_MAP.length;i++){
+      var row = CATEGORY_COURT_MAP[i]; var key=_norm(row.match||""); if(!key) continue;
+      if (cat.indexOf(key)>=0 || txt.indexOf(key)>=0){ if (_courtInRanges(cno, row.ranges)) return true; }
+    }
+    return false;
+  };
+  window.__keywordImpliesCourt = function(courtNo, raw){
+    var txt = _compositeText(raw); var cno = Number(courtNo)||0;
+    for(var i=0;i<KEYWORD_COURT_MAP.length;i++){
+      var row = KEYWORD_COURT_MAP[i]; var key=_norm(row.match||""); if(!key) continue;
+      if (txt.indexOf(key)>=0){ if (_courtInRanges(cno, row.ranges)) return true; }
+    }
+    return false;
+  };
+  window.__tagCourtEligible = function(courtNo, items){
+    try{
+      if(!items || !items.push) return items;
+      for(var i=0;i<items.length;i++){
+        var it = items[i]||{}; var raw = it.raw || it; var eligible=false;
+        try{ if (__categoryImpliesCourt(courtNo, raw)) eligible=true; }catch(e){}
+        try{ if (!eligible && __keywordImpliesCourt(courtNo, raw)) eligible=true; }catch(e){}
+        if (eligible) it.__forceForCourt = true;
+      }
+      return items;
+    }catch(e){ return items; }
+  };
+})();
+</script>
+
+</head>
+<body>
+  <div class="graphic-bar" id="bar">
+    <div id="court-number" class="section"><div class="value" id="court-val">1</div></div>
+    <div id="current-event" class="section"><div class="compat-bg"></div><div class="label" id="cur-label">In Progress</div><div class="value" id="cur-val">Loading...</div></div>
+    <div id="countdown" class="section"><div class="compat-bg"></div><div class="label" id="cd-label">Time Left</div><div class="value" id="cd-val">--</div><div class="cdFill"></div><div class="cdBorder"></div></div>
+    <div id="next-event" class="section"><div class="compat-bg"></div><div class="label">Upcoming</div><div class="value" id="next-val">Loading next...</div></div>
+    <div id="current-time" class="section"><div class="compat-bg"></div><div class="label">Current Time</div><div class="value" id="clock">--:--</div></div>
+  </div>
+  <div id="globalPulse"></div>
+
+  <script>
+    // === CONFIG ===
+    const COURT_NO = 1;
+    const AUTH_B64="Basic T3JnXzEyNjc0OjEyNjc0XzE4NWFmZGE3LTdiNGYtNGIwYS04YmEwLWE3OWVhYzc4ODExZA==";
+    const ORG_MEMBER_ID="12674";
+
+    // Use device/TB1 time only
+    function nowMs(){ return Date.now(); }
+    function toNY(ms){ return new Date(ms).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/New_York'}); }
+    function dayNY(){ const f=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}); return f.format(new Date()); }
+
+    function parseTimeAny(t, baseDateLocal=null){
+      if(t==null||t==="") return null;
+      if(t instanceof Date) return isNaN(t.getTime())?null:t;
+      if(typeof t==="number") return new Date(t>1e12?t:t*1000);
+      if(typeof t==="string"){
+        const s=t.trim();
+        const m=s.match(/^\/Date\((\d+)\)\/$/i); if(m) return new Date(parseInt(m[1],10));
+        if(/^\d{1,2}:\d{2}(\s*[AP]M)?$/i.test(s)){
+          const base=baseDateLocal||new Date(); const [hhmm,ampmRaw]=s.split(/\s+/); let [hh,mm]=hhmm.split(':').map(x=>parseInt(x,10)); const ampm=ampmRaw?ampmRaw.toUpperCase():null; if(ampm){ if(ampm==='PM'&&hh<12) hh+=12; if(ampm==='AM'&&hh===12) hh=0; } return new Date(base.getFullYear(),base.getMonth(),base.getDate(),hh,mm,0,0);
+        }
+        const d=new Date(s); if(!isNaN(d.getTime())) return d;
+      }
+      return null;
+    }
+    function pickArray(c){ if(!c) return []; if(Array.isArray(c)) return c; if(typeof c==='object'){ const keys=['Data','data','Results','Items','Reservations','ReservationList']; for(const k of keys){ if(Array.isArray(c[k])) return c[k]; } if(c.Data && typeof c.Data==='object'){ for(const k of keys){ if(Array.isArray(c.Data[k])) return c.Data[k]; } } } return []; }
+
+    /* ===== Countdown lock & rendering ===== */
+    let countdownTimer=null, countdownTarget=null, countdownMode='none', nextStartMs=null, underMinOn=false;
+    let lastGood=null, initialRendered=false;
+
+    function setUnderMinute(on){
+      const box=document.getElementById('countdown');
+      if(on && !underMinOn){ box.classList.add('under-minute'); document.body.classList.add('global-under-minute'); underMinOn=true; }
+      if(!on && underMinOn){ box.classList.remove('under-minute'); document.body.classList.remove('global-under-minute'); underMinOn=false; }
+    }
+    function setCountdown(newTargetMs, newMode){
+      if(countdownTarget===newTargetMs && countdownMode===newMode) return;
+      countdownTarget=newTargetMs; countdownMode=newMode;
+      if(countdownTimer) cancelAnimationFrame(countdownTimer), countdownTimer=null;
+      if(!newTargetMs){ document.getElementById('cd-val').textContent='--'; setUnderMinute(false); return; }
+      tickCountdown();
+    }
+    function tickCountdown(){
+      const el=document.getElementById('cd-val');
+      const diff=countdownTarget - nowMs();
+      if(diff>0){
+        const totalSec=Math.floor(diff/1000); const totalMin=Math.floor(diff/60000);
+        if(diff<=60000){ const s=totalSec%60; el.textContent=s+'s'; setUnderMinute(true); }
+        else { if(totalMin>=60){ const h=Math.floor(totalMin/60), rem=totalMin%60; el.textContent=h+'h '+rem+'m'; } else { el.textContent=totalMin+'m'; } setUnderMinute(false); }
+      }else{
+        setUnderMinute(false);
+        if(countdownMode==='cur' && nextStartMs){ countdownMode='next'; countdownTarget=nextStartMs; document.getElementById('cd-label').textContent='Time Until'; }
+        else { el.textContent='--'; countdownTarget=null; }
+      }
+      countdownTimer = requestAnimationFrame(tickCountdown);
+    }
+
+    function render(cur, nxt){
+      const curEl=document.getElementById('cur-val'); const cdLabel=document.getElementById('cd-label'); const nextEl=document.getElementById('next-val');
+      initialRendered=true;
+      if(cur){
+        curEl.innerHTML=`${cur.name}<div class='meta'>${toNY(cur.start.getTime())} - ${toNY(cur.end.getTime())}</div>`;
+        cdLabel.textContent='Time Left';
+        setCountdown(cur.end.getTime(), 'cur');
+      } else {
+        curEl.textContent='No current event';
+        if(nxt){
+          cdLabel.textContent='Time Until';
+          setCountdown(nxt.start.getTime(), 'next');
+        } else {
+          cdLabel.textContent='Time Left';
+          setCountdown(null, 'none');
+        }
+      }
+      if(nxt){ nextEl.innerHTML=`${nxt.name}<div class='meta'>${toNY(nxt.start.getTime())} - ${toNY(nxt.end.getTime())}</div>`; }
+      else { nextEl.textContent='No upcoming event'; }
+    }
+
+    function failSafeFirstFrame(){
+      if(!initialRendered){
+        render(null, null);
+      }
+    }
+
+    function fetchWithTimeout(url, opts={}, timeoutMs=6000){
+      const ctrl=new AbortController(); const id=setTimeout(()=>ctrl.abort(), timeoutMs);
+      return fetch(url, {...opts, signal: ctrl.signal}).finally(()=>clearTimeout(id));
+    }
+
+    let __fetchToggle=0; let __cacheEvents=[], __cacheReservations=[]; let __cacheDateStr='';
+    async function refresh(){
+      const d=dayNY();
+      const evUrl=`https://api.courtreserve.com/api/v1/eventcalendar/eventlist?orgMemberId=${ORG_MEMBER_ID}&startDate=${d}T00:00:00&endDate=${d}T23:59:59`;
+      const baseRes = new URL('https://api.courtreserve.com/api/v1/reservationreport/listactive');
+      baseRes.searchParams.set('orgMemberId', ORG_MEMBER_ID);
+      baseRes.searchParams.set('reservationsFromDate', `${d}T00:00:00`);
+      baseRes.searchParams.set('reservationsToDate', `${d}T23:59:59`);
+      baseRes.searchParams.set('includePlayers', 'true');
+      const resUrl = baseRes.toString();
+
+      try{
+        let eArr = __cacheEvents, rArr = __cacheReservations;
+        if (__cacheDateStr !== d) { __cacheEvents=[]; __cacheReservations=[]; eArr=[]; rArr=[]; __cacheDateStr=d; __fetchToggle=0; }
+        if (__fetchToggle === 0) {
+          const [eRes, rRes] = await Promise.allSettled([
+            fetchWithTimeout(evUrl, {headers:{Authorization:AUTH_B64}}).then(r=>r.ok?r.json():Promise.reject(new Error('ev '+r.status))),
+            fetchWithTimeout(resUrl,{headers:{Authorization:AUTH_B64}}).then(r=>r.ok?r.json():Promise.reject(new Error('res '+r.status)))
+          ]);
+          eArr = eRes.status==='fulfilled' ? pickArray(eRes.value) : []; __cacheEvents = eArr;
+          rArr = rRes.status==='fulfilled' ? pickArray(rRes.value) : []; __cacheReservations = rArr;
+          __fetchToggle++;
+        } else if ((__fetchToggle % 2) === 0) {
+          try{ const r = await fetchWithTimeout(evUrl, {headers:{Authorization:AUTH_B64}}); if(r.ok){ const j=await r.json(); __cacheEvents=pickArray(j); eArr=__cacheEvents; } }catch(_){ eArr=__cacheEvents; }
+          rArr=__cacheReservations;
+          __fetchToggle++;
+        } else {
+          try{ const r = await fetchWithTimeout(resUrl, {headers:{Authorization:AUTH_B64}}); if(r.ok){ const j=await r.json(); __cacheReservations=pickArray(j); rArr=__cacheReservations; } }catch(_){ rArr=__cacheReservations; }
+          eArr=__cacheEvents;
+          __fetchToggle++;
+        }
+
+        if(eArr.length===0 && rArr.length===0 && lastGood){
+          render(lastGood.cur, lastGood.nxt);
+          return;
+        }
+
+        const baseDateLocal=new Date();
+        const events=eArr.map(x=>({ source:'event', raw:x, name:(/badminton/i.test(String((x.Title||x.EventName||x.Name||''))) ? 'Badminton' : (x.EventName||x.Name||'Event')), start:parseTimeAny(x.StartDateTime||x.StartTime||x.Start, baseDateLocal), end:parseTimeAny(x.EndDateTime||x.EndTime||x.End, baseDateLocal) })).filter(it=>it.start&&it.end);
+        const reservations=rArr.map(x=>{
+          const start=parseTimeAny(x.StartTime||x.StartDateTime||x.Start, baseDateLocal);
+          const end  =parseTimeAny(x.EndTime||x.EndDateTime||x.End,   baseDateLocal);
+          const players=Array.isArray(x.Players)?x.Players:[];
+          function shortName(p){
+            const fn=(p.FirstName||'').trim(); const ln=(p.LastName||'').trim();
+            const init = fn ? (fn[0].toUpperCase()+'.') : '';
+            return (init && ln) ? `${init} ${ln}` : (init || ln || '');
+          }
+          let nm = players.length ? players.map(shortName).filter(Boolean).join(', ') : '';
+          if(!nm){
+            const fields=['BookedByName','BookedByMemberName','BookedByDisplayName','BookedBy','BookerName','ReservedBy','ReservedByName','ReservationOwnerName','OwnerDisplayName','OwnerName','ReservationOwner','Owner','PrimaryMemberFullName','PrimaryMemberName','PrimaryMember','MemberDisplayName','MemberFullName','MemberName','Member','OrganizerName','Organizer','CreatedByDisplayName','CreatedByName','CreatedBy','FirstName','LastName','DisplayName','ReservationName','Title','Description','Notes','PlayersText'];
+            for(const k of fields){ if(x[k] && String(x[k]).trim()){
+                const v=String(x[k]).trim();
+                const parts=v.split(/\s+/).filter(Boolean);
+                if(parts.length>=2){ nm = `${parts[0][0].toUpperCase()}. ${parts.slice(1).join(' ')}`; }
+                else { nm = v; }
+                break;
+            } }
+          }
+          if(!nm && x.ReservationTypeName) nm = x.ReservationTypeName.trim();
+          if(!nm) nm='Reserved';
+          return { source:'reservation', raw:x, name:nm, start, end };
+        }).filter(it=>it.start&&it.end);
+
+        __tagCourtEligible(COURT_NO, reservations);
+        __tagCourtEligible(COURT_NO, events);
+        const forCourt=reservations.concat(events)
+          .filter(it=>__includesCourtSafe(it.raw, COURT_NO) || it.__forceForCourt===true)
+          .sort((a,b)=> a.start - b.start);
+
+        const nowLocal=new Date(nowMs());
+        let cur=null, nxt=null;
+        for(const item of forCourt){
+          if(!cur && nowLocal>=item.start && nowLocal<=item.end) cur=item;
+          if(!nxt && nowLocal<item.start) nxt=item;
+        }
+        nextStartMs = nxt ? nxt.start.getTime() : null;
+
+        render(cur, nxt);
+        lastGood = {cur, nxt, t: Date.now()};
+      }catch(e){
+        if(lastGood){ render(lastGood.cur, lastGood.nxt); }
+        else { render(null, null); }
+      }
+    }
+
+    function tickClock(){
+      const el=document.getElementById('clock');
+      el.textContent=new Date(nowMs()).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/New_York'});
+      const ms=1000-(performance.now()%1000);
+      setTimeout(tickClock, Math.max(250,ms));
+    }
+
+    function init(){
+      refresh();
+      setInterval(refresh, 30000); // 30 seconds
+      setTimeout(failSafeFirstFrame, 7000);
+      tickClock();
+    }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+</body>
+</html>
