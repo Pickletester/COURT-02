@@ -76,26 +76,18 @@
     .meta{ font-size:10px; color:#d8d8d8; }
 
     /* ===== In-progress skill bubbles (title-based) ===== */
-    #cur .val.skill-adv {
-      background:#c81e1e; /* red */
+    .skill-adv,
+    .skill-int,
+    .skill-beg,
+    .skill-35 {
       border-radius:999px;
       padding:3px 10px;
+      display:inline-block;
     }
-    #cur .val.skill-int {
-      background:#16a34a; /* green */
-      border-radius:999px;
-      padding:3px 10px;
-    }
-    #cur .val.skill-beg {
-      background:#0ea5e9; /* light blue */
-      border-radius:999px;
-      padding:3px 10px;
-    }
-    #cur .val.skill-35 {
-      background:#8b5cf6; /* purple for 3.5–3.9 */
-      border-radius:999px;
-      padding:3px 10px;
-    }
+    .skill-adv { background-color:#c81e1e !important; }  /* red: 4.0–4.9 or Advanced */
+    .skill-int { background-color:#16a34a !important; }  /* green: 3.0–3.4 or Intermediate */
+    .skill-beg { background-color:#33b5ff !important; }  /* light blue: 2.0–2.9 or Beginner */
+    .skill-35 { background-color:#8b5cf6 !important; }   /* purple: 3.5–3.9 */
   </style>
 </head>
 <body>
@@ -148,7 +140,7 @@
     return [];
   }
 
-  // ======= SMART COURT FILTER (does NOT rely on Title) =======
+  // ======= SMART COURT FILTER (no Title dependency) =======
   function containsCourtN(rec, n){
     n = Number(n) || 1;
     if(!rec) return false;
