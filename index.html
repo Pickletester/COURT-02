@@ -294,6 +294,7 @@
         cdTimer = setTimeout(tick, 1000);
       } else {
         if (cdMode === "cur") {
+          // current event expired → show red "TIME EXPIRED" then fall back
           setPulse("red"); setBar("red");
           lbl.textContent = "";
           out.className = "val expired-msg";
@@ -314,6 +315,18 @@
             tick();
           }, 30000);
 
+        } else if (cdMode === "next") {
+          // UPCOMING just hit 0 → immediately recompute from CourtReserve
+          cdTarget = null;
+          cdMode = "none";
+          out.className = "val";
+          out.textContent = "--";
+          lbl.textContent = "Time Left";
+          setPulse("blue");
+          setBar("blue");
+          // force one fresh pull so Upcoming becomes In Progress right away
+          try { refresh(); } catch(e){}
+          // no further countdown tick here; refresh() will start a new one
         } else {
           setPulse("blue"); setBar("blue");
           lbl.textContent = "Time Until";
@@ -336,7 +349,7 @@
     if(cur){
       lastCurName = cur.name + fmtTime(cur);
 
-      // reset inline styles first
+      // reset inline styles
       curEl.className = "val";
       curEl.style.backgroundColor = "";
       curEl.style.borderRadius = "";
@@ -348,18 +361,15 @@
       var tNorm = tLow.replace(/\s+/g,"").replace(/–/g,"-").replace(/—/g,"-");
 
       var color = null;
-
-      // numeric ranges first
       if(tNorm.indexOf("4.0-4.9") >= 0){
-        color = "#c81e1e"; // red
+        color = "#c81e1e";
       } else if(tNorm.indexOf("3.5-3.9") >= 0){
-        color = "#8b5cf6"; // purple
+        color = "#8b5cf6";
       } else if(tNorm.indexOf("3.0-3.4") >= 0){
-        color = "#16a34a"; // green
+        color = "#16a34a";
       } else if(tNorm.indexOf("2.0-2.9") >= 0){
-        color = "#33b5ff"; // light blue
+        color = "#33b5ff";
       } else {
-        // word-based fallback
         if(tLow.indexOf("advanced") >= 0)      color = "#c81e1e";
         else if(tLow.indexOf("intermediate") >= 0) color = "#16a34a";
         else if(tLow.indexOf("beginner") >= 0) color = "#33b5ff";
@@ -369,7 +379,6 @@
         curEl.style.backgroundColor = color;
         curEl.style.borderRadius = "999px";
         curEl.style.padding = "3px 10px";
-        // ensure text stays white
         curEl.style.color = "#ffffff";
       }
 
