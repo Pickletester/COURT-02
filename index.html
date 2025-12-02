@@ -74,20 +74,6 @@
 
     .expired-msg { font-size:28px; color:#ff4444; font-weight:900; }
     .meta{ font-size:10px; color:#d8d8d8; }
-
-    /* ===== In-progress skill bubbles (title-based) ===== */
-    .skill-adv,
-    .skill-int,
-    .skill-beg,
-    .skill-35 {
-      border-radius:999px;
-      padding:3px 10px;
-      display:inline-block;
-    }
-    .skill-adv { background-color:#c81e1e !important; }  /* red: 4.0–4.9 or Advanced */
-    .skill-int { background-color:#16a34a !important; }  /* green: 3.0–3.4 or Intermediate */
-    .skill-beg { background-color:#33b5ff !important; }  /* light blue: 2.0–2.9 or Beginner */
-    .skill-35 { background-color:#8b5cf6 !important; }   /* purple: 3.5–3.9 */
   </style>
 </head>
 <body>
@@ -350,32 +336,50 @@
     if(cur){
       lastCurName = cur.name + fmtTime(cur);
 
+      // reset inline styles first
+      curEl.className = "val";
+      curEl.style.backgroundColor = "";
+      curEl.style.borderRadius = "";
+      curEl.style.padding = "";
+
+      // title-based coloring
       var title = (cur.name || "");
       var tLow  = title.toLowerCase();
       var tNorm = tLow.replace(/\s+/g,"").replace(/–/g,"-").replace(/—/g,"-");
-      var cls = "val";
+
+      var color = null;
 
       // numeric ranges first
       if(tNorm.indexOf("4.0-4.9") >= 0){
-        cls += " skill-adv";       // red
+        color = "#c81e1e"; // red
       } else if(tNorm.indexOf("3.5-3.9") >= 0){
-        cls += " skill-35";        // purple
+        color = "#8b5cf6"; // purple
       } else if(tNorm.indexOf("3.0-3.4") >= 0){
-        cls += " skill-int";       // green
+        color = "#16a34a"; // green
       } else if(tNorm.indexOf("2.0-2.9") >= 0){
-        cls += " skill-beg";       // light blue
+        color = "#33b5ff"; // light blue
       } else {
-        // fallback to words
-        if(tLow.indexOf("advanced") >= 0)      cls += " skill-adv";
-        else if(tLow.indexOf("intermediate") >= 0) cls += " skill-int";
-        else if(tLow.indexOf("beginner") >= 0) cls += " skill-beg";
+        // word-based fallback
+        if(tLow.indexOf("advanced") >= 0)      color = "#c81e1e";
+        else if(tLow.indexOf("intermediate") >= 0) color = "#16a34a";
+        else if(tLow.indexOf("beginner") >= 0) color = "#33b5ff";
       }
 
-      curEl.className = cls;
+      if(color){
+        curEl.style.backgroundColor = color;
+        curEl.style.borderRadius = "999px";
+        curEl.style.padding = "3px 10px";
+        // ensure text stays white
+        curEl.style.color = "#ffffff";
+      }
+
       curEl.innerHTML = cur.name + fmtTime(cur);
       startCountdown(cur.end.getTime(), "cur");
     } else {
       curEl.className = "val";
+      curEl.style.backgroundColor = "";
+      curEl.style.borderRadius = "";
+      curEl.style.padding = "";
       curEl.textContent = "No current event";
       if(nxt){ startCountdown(nxt.start.getTime(), "next"); }
       else { startCountdown(null, "none"); }
