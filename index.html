@@ -74,15 +74,109 @@
 
     .expired-msg { font-size:28px; color:#ff4444; font-weight:900; }
     .meta{ font-size:10px; color:#d8d8d8; }
+
+    /* ===== POPUP OVERLAY WITH GLOW (ON-THE-MINUTE) ===== */
+    #infoOverlay{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      background:rgba(0,0,0,.82);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 800ms ease;
+    }
+    #infoOverlay.active{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .overlayBox{
+      background:#0c0c0c;
+      border-radius:30px;
+      padding:45px 80px 55px 80px;
+      max-width:80%;
+      text-align:center;
+      color:#fff;
+      transform:scale(.82);
+      box-shadow:
+        0 0 15px rgba(0,140,255,.55),
+        0 0 30px rgba(0,90,255,.45),
+        0 0 60px rgba(60,120,255,.35);
+    }
+    #infoOverlay.active .overlayBox{
+      animation: popIn .9s cubic-bezier(.18,.89,.32,1) forwards,
+                 glowPulse 2.8s ease-in-out infinite;
+    }
+
+    .overlayLogo{
+      max-width:420px;
+      max-height:120px;
+      margin-bottom:10px;
+      display:block;
+    }
+
+    .overlayTitle{
+      font-size:36px;
+      font-weight:900;
+      margin-bottom:12px;
+      letter-spacing:.18em;
+    }
+    .overlayBody{
+      font-size:40px;
+      line-height:1.25;
+      font-weight:700;
+      margin-top:10px;
+    }
+
+    @keyframes popIn{
+      0%{
+        transform:scale(.7);
+        opacity:0;
+      }
+      80%{
+        transform:scale(1.05);
+      }
+      100%{
+        transform:scale(1);
+        opacity:1;
+      }
+    }
+    @keyframes glowPulse{
+      0%,100%{
+        box-shadow:
+          0 0 15px rgba(0,140,255,.55),
+          0 0 30px rgba(0,90,255,.45),
+          0 0 60px rgba(60,120,255,.35);
+      }
+      50%{
+        box-shadow:
+          0 0 30px rgba(0,180,255,.9),
+          0 0 60px rgba(0,120,255,.7),
+          0 0 90px rgba(80,180,255,.6);
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- COURT BAR -->
   <div class="bar" id="bar">
     <div id="cn" class="sec"><div class="val pulse-blue" id="cno">4</div></div>
     <div id="cur" class="sec"><div class="label">In Progress</div><div class="val" id="curv">Loading...</div></div>
     <div id="cd" class="sec"><div class="label" id="cdlbl">Time Left</div><div class="val" id="cdv">--</div></div>
     <div id="nxt" class="sec"><div class="label">Upcoming</div><div class="val" id="nxtv">Loading next...</div></div>
     <div id="now" class="sec"><div class="label">Current Time</div><div class="val" id="clock">--:--</div></div>
+  </div>
+
+  <!-- FULL-SCREEN POPUP OVERLAY -->
+  <div id="infoOverlay">
+    <div class="overlayBox">
+      <!-- put your LevelUp PNG in same folder, named levelup-logo.png -->
+      <img src="levelup-logo.png" alt="LevelUp Pickleball" class="overlayLogo">
+      <div class="overlayTitle">LEVELUP PICKLEBALL</div>
+      <div class="overlayBody" id="overlayBody">Loading...</div>
+    </div>
   </div>
 
 <script>
@@ -518,10 +612,40 @@
     else { render(null, null); }
   }
 
+  // ===== POPUP OVERLAY (GLOW, ON-THE-MINUTE, MIRROR "IN PROGRESS") =====
+  var infoOverlay = document.getElementById("infoOverlay");
+  var overlayBodyEl = document.getElementById("overlayBody");
+
+  function showInfoOverlay(){
+    if(!infoOverlay) return;
+    var curEl = document.getElementById("curv");
+    if(curEl && overlayBodyEl){
+      // copy whatever is currently in the In Progress tab (name + time)
+      overlayBodyEl.innerHTML = curEl.innerHTML || curEl.textContent || "";
+    }
+    infoOverlay.classList.add("active");
+    setTimeout(function(){
+      infoOverlay.classList.remove("active");
+    }, 10000); // visible for 10 seconds
+  }
+
+  function startOverlayMinuteLoop(){
+    if(!infoOverlay) return;
+    var now = new Date();
+    var msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    if(msUntilNextMinute < 100){ msUntilNextMinute = 100; }
+
+    setTimeout(function(){
+      showInfoOverlay();
+      setInterval(showInfoOverlay, 60000); // repeat every minute
+    }, msUntilNextMinute);
+  }
+
   document.getElementById('cno').textContent = String(COURT_NO);
   tickClock();
   refresh(false);
   setInterval(refresh, 30000);
+  startOverlayMinuteLoop();
 })();
 </script>
 </body>
