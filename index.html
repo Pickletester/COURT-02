@@ -294,7 +294,6 @@
         cdTimer = setTimeout(tick, 1000);
       } else {
         if (cdMode === "cur") {
-          // current event expired → show red "TIME EXPIRED" then fall back
           setPulse("red"); setBar("red");
           lbl.textContent = "";
           out.className = "val expired-msg";
@@ -316,17 +315,15 @@
           }, 30000);
 
         } else if (cdMode === "next") {
-          // UPCOMING just hit 0 → immediately recompute from CourtReserve
+          // Upcoming just hit 0 -> force fresh data so it becomes In Progress immediately
           cdTarget = null;
-          cdMode = "none";
+          cdMode   = "none";
           out.className = "val";
           out.textContent = "--";
           lbl.textContent = "Time Left";
           setPulse("blue");
           setBar("blue");
-          // force one fresh pull so Upcoming becomes In Progress right away
-          try { refresh(); } catch(e){}
-          // no further countdown tick here; refresh() will start a new one
+          try{ refresh(true); }catch(e){}
         } else {
           setPulse("blue"); setBar("blue");
           lbl.textContent = "Time Until";
@@ -362,13 +359,13 @@
 
       var color = null;
       if(tNorm.indexOf("4.0-4.9") >= 0){
-        color = "#c81e1e";
+        color = "#c81e1e";      // red
       } else if(tNorm.indexOf("3.5-3.9") >= 0){
-        color = "#8b5cf6";
+        color = "#8b5cf6";      // purple
       } else if(tNorm.indexOf("3.0-3.4") >= 0){
-        color = "#16a34a";
+        color = "#16a34a";      // green
       } else if(tNorm.indexOf("2.0-2.9") >= 0){
-        color = "#33b5ff";
+        color = "#33b5ff";      // light blue
       } else {
         if(tLow.indexOf("advanced") >= 0)      color = "#c81e1e";
         else if(tLow.indexOf("intermediate") >= 0) color = "#16a34a";
@@ -402,9 +399,18 @@
   var lastGood = null;
 
   function buildDayUrls(){
-    var d = todayStrNY();
-    var ev = "https://api.courtreserve.com/api/v1/eventcalendar/eventlist?orgMemberId="+encodeURIComponent(ORG_MEMBER_ID)+"&startDate="+d+"T00:00:00&endDate="+d+"T23:59:59";
-    var res = "https://api.courtreserve.com/api/v1/reservationreport/listactive?orgMemberId="+encodeURIComponent(ORG_MEMBER_ID)+"&reservationsFromDate="+d+"T00:00:00&reservationsToDate="+d+"T23:59:59&includePlayers=true";
+    var d   = todayStrNY();
+    var rnd = new Date().getTime();   // cache-buster for TB1
+    var ev  = "https://api.courtreserve.com/api/v1/eventcalendar/eventlist"
+            + "?orgMemberId="+encodeURIComponent(ORG_MEMBER_ID)
+            + "&startDate="+d+"T00:00:00&endDate="+d+"T23:59:59"
+            + "&r="+rnd;
+    var res = "https://api.courtreserve.com/api/v1/reservationreport/listactive"
+            + "?orgMemberId="+encodeURIComponent(ORG_MEMBER_ID)
+            + "&reservationsFromDate="+d+"T00:00:00"
+            + "&reservationsToDate="+d+"T23:59:59"
+            + "&includePlayers=true"
+            + "&r="+rnd;
     return {ev:ev, res:res};
   }
 
@@ -439,11 +445,24 @@
 
   var toggle = 0, cacheEv = [], cacheRes = [], cacheDate = "";
 
-  function refresh(){
+  function refresh(forceNoToggle){
     var dstr = todayStrNY();
     if(cacheDate !== dstr){ cacheEv=[]; cacheRes=[]; cacheDate=dstr; toggle=0; }
 
     var urls = buildDayUrls();
+
+    // if forceNoToggle (coming from countdown), just fetch both fresh once
+    if(forceNoToggle){
+      xhrJSON(urls.ev,  {"Authorization":AUTH_B64}, 8000, function(errE, dataE){
+        if(!errE){ cacheEv = pickArray(dataE); }
+        xhrJSON(urls.res, {"Authorization":AUTH_B64}, 8000, function(errR, dataR){
+          if(!errR){ cacheRes = pickArray(dataR); }
+          computeAndRender();
+        });
+      });
+      return;
+    }
+
     if(toggle === 0){
       xhrJSON(urls.ev, {"Authorization":AUTH_B64}, 8000, function(errE, dataE){
         if(!errE){ cacheEv = pickArray(dataE); }
@@ -501,7 +520,7 @@
 
   document.getElementById('cno').textContent = String(COURT_NO);
   tickClock();
-  refresh();
+  refresh(false);
   setInterval(refresh, 30000);
 })();
 </script>
