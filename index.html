@@ -93,7 +93,7 @@
       pointer-events:auto;
     }
     .overlayBox{
-      background:#0c0c0c;
+      background:#0c0c0c; /* default when no level */
       border-radius:30px;
       padding:45px 80px 55px 80px;
       max-width:80%;
@@ -111,20 +111,31 @@
     }
 
     .overlayLogo{
-  display:block;
-  margin:0 auto 12px auto;
-  max-width:420px;
-  max-height:120px;
+      display:block;
+      margin:0 auto 12px auto;
+      max-width:420px;
+      max-height:120px;
+    }
+
+    /* SUPER BOLD LEVEL LABEL */
+.overlayLevel{
+  font-size:56px;
+  font-weight:900;
+  margin:16px 0 16px 0;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#000000;
+
     }
 
     .overlayTitle{
-      font-size:36px;
-      font-weight:900;
+      font-size:70px;
+      font-weight:1200;
       margin-bottom:12px;
       letter-spacing:.18em;
     }
     .overlayBody{
-      font-size:40px;
+      font-size:50px;
       line-height:1.25;
       font-weight:700;
       margin-top:10px;
@@ -171,10 +182,11 @@
 
   <!-- FULL-SCREEN POPUP OVERLAY -->
   <div id="infoOverlay">
-    <div class="overlayBox">
+    <div class="overlayBox" id="overlayBox">
       <!-- put your LevelUp PNG in same folder, named levelup-logo.png -->
       <img src="levelup-logo.png" alt="LevelUp Pickleball" class="overlayLogo">
-      <div class="overlayTitle">LEVELUP PICKLEBALL</div>
+      <!-- NEW: level text goes here -->
+      <div class="overlayLevel" id="overlayLevel" style="display:none;"></div>
       <div class="overlayBody" id="overlayBody">Loading...</div>
     </div>
   </div>
@@ -186,6 +198,10 @@
   var ORG_MEMBER_ID = "12674";
   var AUTH_B64 = "Basic T3JnXzEyNjc0OjEyNjc0XzE4NWFmZGE3LTdiNGYtNGIwYS04YmEwLWE3OWVhYzc4ODExZA==";
   var TZ = "America/New_York";
+
+  // store current level for overlay
+  var currentLevelLabel = "";
+  var currentLevelBg    = "#0c0c0c";
 
   // ======= UTIL =======
   function pad2(n){ return (n<10?"0":"")+n; }
@@ -433,6 +449,58 @@
 
   function fmtTime(d){ return "<div class='meta'>"+toLocalNY(d.start)+" - "+toLocalNY(d.end)+"</div>"; }
 
+  // helper to detect level + colors from title
+  function getLevelInfoFromTitle(title){
+    var t = (title || "");
+    var tLow  = t.toLowerCase();
+    var tNorm = tLow.replace(/\s+/g,"").replace(/–/g,"-").replace(/—/g,"-");
+
+    // default: no level
+    var info = {
+      bubbleColor: null,
+      label: "",
+      overlayBg: "#0c0c0c"
+    };
+
+    if(tNorm.indexOf("4.0-4.9") >= 0){
+      info.bubbleColor = "#c81e1e";   // red
+      info.label       = "Advanced";
+      info.overlayBg   = "#b91c1c";
+    } else if(tNorm.indexOf("3.5-3.9") >= 0){
+      info.bubbleColor = "#8b5cf6";   // purple
+      info.label       = "Intermediate +";
+      info.overlayBg   = "#6d28d9";
+    } else if(tNorm.indexOf("3.0-3.4") >= 0){
+      info.bubbleColor = "#16a34a";   // green
+      info.label       = "Intermediate";
+      info.overlayBg   = "#22c55e";
+    } else if(tNorm.indexOf("2.0-2.9") >= 0){
+      info.bubbleColor = "#33b5ff";   // light blue
+      info.label       = "Beginner";
+      info.overlayBg   = "#38bdf8";
+    } else {
+      // text-based fallback
+      if(tLow.indexOf("advanced") >= 0){
+        info.bubbleColor = "#c81e1e";
+        info.label       = "Advanced";
+        info.overlayBg   = "#b91c1c";
+      } else if(tLow.indexOf("intermediate +") >= 0 || tLow.indexOf("intermediate+") >= 0){
+        info.bubbleColor = "#8b5cf6";
+        info.label       = "Intermediate +";
+        info.overlayBg   = "#6d28d9";
+      } else if(tLow.indexOf("intermediate") >= 0){
+        info.bubbleColor = "#16a34a";
+        info.label       = "Intermediate";
+        info.overlayBg   = "#22c55e";
+      } else if(tLow.indexOf("beginner") >= 0){
+        info.bubbleColor = "#33b5ff";
+        info.label       = "Beginner";
+        info.overlayBg   = "#38bdf8";
+      }
+    }
+    return info;
+  }
+
   function render(cur, nxt){
     var curEl = document.getElementById('curv');
     var nxtEl = document.getElementById('nxtv');
@@ -445,29 +513,15 @@
       curEl.style.backgroundColor = "";
       curEl.style.borderRadius = "";
       curEl.style.padding = "";
+      curEl.style.color = "";
 
-      // title-based coloring
-      var title = (cur.name || "");
-      var tLow  = title.toLowerCase();
-      var tNorm = tLow.replace(/\s+/g,"").replace(/–/g,"-").replace(/—/g,"-");
+      // determine level colors + label
+      var levelInfo = getLevelInfoFromTitle(cur.name || "");
+      currentLevelLabel = levelInfo.label;
+      currentLevelBg    = levelInfo.overlayBg;
 
-      var color = null;
-      if(tNorm.indexOf("4.0-4.9") >= 0){
-        color = "#c81e1e";      // red
-      } else if(tNorm.indexOf("3.5-3.9") >= 0){
-        color = "#8b5cf6";      // purple
-      } else if(tNorm.indexOf("3.0-3.4") >= 0){
-        color = "#16a34a";      // green
-      } else if(tNorm.indexOf("2.0-2.9") >= 0){
-        color = "#33b5ff";      // light blue
-      } else {
-        if(tLow.indexOf("advanced") >= 0)      color = "#c81e1e";
-        else if(tLow.indexOf("intermediate") >= 0) color = "#16a34a";
-        else if(tLow.indexOf("beginner") >= 0) color = "#33b5ff";
-      }
-
-      if(color){
-        curEl.style.backgroundColor = color;
+      if(levelInfo.bubbleColor){
+        curEl.style.backgroundColor = levelInfo.bubbleColor;
         curEl.style.borderRadius = "999px";
         curEl.style.padding = "3px 10px";
         curEl.style.color = "#ffffff";
@@ -476,6 +530,9 @@
       curEl.innerHTML = cur.name + fmtTime(cur);
       startCountdown(cur.end.getTime(), "cur");
     } else {
+      currentLevelLabel = "";
+      currentLevelBg    = "#0c0c0c";
+
       curEl.className = "val";
       curEl.style.backgroundColor = "";
       curEl.style.borderRadius = "";
@@ -613,8 +670,24 @@
   }
 
   // ===== POPUP OVERLAY (GLOW, ON-THE-MINUTE, MIRROR "IN PROGRESS") =====
-  var infoOverlay = document.getElementById("infoOverlay");
+  var infoOverlay   = document.getElementById("infoOverlay");
   var overlayBodyEl = document.getElementById("overlayBody");
+  var overlayBoxEl  = document.getElementById("overlayBox");
+  var overlayLevelEl= document.getElementById("overlayLevel");
+
+  function applyOverlayLevelStyles(){
+    if(!overlayBoxEl || !overlayLevelEl) return;
+
+    if(currentLevelLabel){
+      overlayLevelEl.style.display = "block";
+      overlayLevelEl.textContent  = currentLevelLabel;
+      overlayBoxEl.style.background = currentLevelBg || "#0c0c0c";
+    } else {
+      overlayLevelEl.style.display = "none";
+      overlayLevelEl.textContent  = "";
+      overlayBoxEl.style.background = "#0c0c0c"; // default black when no level
+    }
+  }
 
   function showInfoOverlay(){
     if(!infoOverlay) return;
@@ -623,6 +696,10 @@
       // copy whatever is currently in the In Progress tab (name + time)
       overlayBodyEl.innerHTML = curEl.innerHTML || curEl.textContent || "";
     }
+
+    // apply level + background based on current event
+    applyOverlayLevelStyles();
+
     infoOverlay.classList.add("active");
     setTimeout(function(){
       infoOverlay.classList.remove("active");
