@@ -93,7 +93,7 @@
       pointer-events:auto;
     }
     .overlayBox{
-      background:#0c0c0c; /* default when no level */
+      background-color:#0c0c0c; /* CHANGED from background: to background-color: */
       border-radius:30px;
       padding:45px 80px 55px 80px;
       max-width:80%;
@@ -118,14 +118,13 @@
     }
 
     /* SUPER BOLD LEVEL LABEL */
-.overlayLevel{
-  font-size:56px;
-  font-weight:900;
-  margin:16px 0 16px 0;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  color:#000000;
-
+    .overlayLevel{
+      font-size:56px;
+      font-weight:900;
+      margin:16px 0 16px 0;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:#000000;
     }
 
     .overlayTitle{
@@ -681,11 +680,12 @@
     if(currentLevelLabel){
       overlayLevelEl.style.display = "block";
       overlayLevelEl.textContent  = currentLevelLabel;
-      overlayBoxEl.style.background = currentLevelBg || "#0c0c0c";
+      // CHANGED: background -> backgroundColor for TB1
+      overlayBoxEl.style.backgroundColor = currentLevelBg || "#0c0c0c";
     } else {
       overlayLevelEl.style.display = "none";
       overlayLevelEl.textContent  = "";
-      overlayBoxEl.style.background = "#0c0c0c"; // default black when no level
+      overlayBoxEl.style.backgroundColor = "#0c0c0c"; // default black when no level
     }
   }
 
