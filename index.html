@@ -2,14 +2,11 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Court 2 — TB1-SAFE (30s fade, CPU-Optimized Anim)</title>
+  <title>Court 2 — TB1-SAFE (30s fade, CPU-Optimized v2)</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-
-  <!-- IMPORTANT: lock LED canvas so Web widget doesn’t rescale internally -->
   <meta name="viewport" content="width=845, height=384, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-
   <style>
     html, body{
       margin:0; padding:0; width:100vw; height:100vh;
@@ -28,7 +25,6 @@
     .bar.red{
       background:linear-gradient(90deg,#4a0000,#c02020 70%);
     }
-    /* skill bar uses vars set by JS */
     .bar.skill{
       background:linear-gradient(90deg,var(--skillA,#14203a),var(--skillB,#22335d) 70%);
     }
@@ -81,10 +77,7 @@
       transition: border-color 300ms ease;
     }
 
-    /* =========================================================
-       CPU-SAFE “GLOW”: DO NOT ANIMATE BOX-SHADOW
-       Keep same vibe using opacity halo
-       ========================================================= */
+    /* CPU-safe “glow” (opacity halo) */
     .pulse-blue { animation: pulseBlue 2.8s ease-in-out infinite; }
     .pulse-blue::after{
       content:""; position:absolute;
@@ -117,7 +110,7 @@
     .expired-msg { font-size:28px; color:#ff4444; font-weight:900; }
     .meta{ font-size:12px; color:#d8d8d8; }
 
-    /* ===== POPUP OVERLAY (ON-THE-MINUTE) ===== */
+    /* ===== POPUP OVERLAY ===== */
     #infoOverlay{
       position:fixed; top:0; left:0; right:0; bottom:0;
       z-index:9999;
@@ -136,8 +129,6 @@
       text-align:center;
       color:#fff;
       transform:scale(.82);
-
-      /* keep a static shadow (static is fine) */
       box-shadow:
         0 0 15px rgba(0,140,255,.45),
         0 0 30px rgba(0,90,255,.35),
@@ -153,9 +144,6 @@
       margin:0 auto 12px auto;
       max-width:420px;
       max-height:120px;
-
-      /* remove expensive filter chains; keep it clean */
-      /* filter: drop-shadow(...) drop-shadow(...); */
     }
     .overlayLevel{
       font-size:56px;
@@ -177,8 +165,6 @@
       80%{ transform:scale(1.05); }
       100%{ transform:scale(1); opacity:1; }
     }
-
-    /* CPU-safe overlay “glow”: pulse opacity only (not box-shadow) */
     @keyframes overlayHalo{
       0%,100%{ opacity:1; }
       50%{ opacity:.92; }
@@ -187,7 +173,6 @@
 </head>
 
 <body>
-  <!-- COURT BAR -->
   <div class="bar" id="bar">
     <div id="cn" class="sec"><div class="val pulse-blue" id="cno">2</div></div>
     <div id="cur" class="sec"><div class="label">In Progress</div><div class="val" id="curv">Loading...</div></div>
@@ -196,7 +181,6 @@
     <div id="now" class="sec"><div class="label">Current Time</div><div class="val" id="clock">--:--</div></div>
   </div>
 
-  <!-- FULL-SCREEN POPUP OVERLAY -->
   <div id="infoOverlay">
     <div class="overlayBox" id="overlayBox">
       <img src="levelup-logo.png" alt="LevelUp Pickleball" class="overlayLogo">
@@ -207,30 +191,24 @@
 
 <script>
 (function(){
-  // ======= CONFIG =======
   var COURT_NO   = 2;
   var TZ         = "America/New_York";
   var PROXY_BASE = "https://courtreserve-proxy.s-jackson.workers.dev/api/day";
 
-  // current "skill" info
   var currentLevelLabel = "";
   var currentLevelBg    = "#0c0c0c";
   var currentIsSkill    = false;
 
-  // countdown state
   var cdTimer = null, cdMode = "none", cdTarget = null;
   var nxtStart = null;
   var lastCurName = "";
   var lastGood = null;
 
-  // ======= UTIL =======
   function pad2(n){ return (n<10?"0":"")+n; }
 
   function toLocalNY(d){
     try{
-      return d.toLocaleTimeString('en-US', {
-        hour:'numeric', minute:'2-digit', hour12:true, timeZone: TZ
-      });
+      return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone: TZ });
     } catch(e){
       return d.getHours()+":"+pad2(d.getMinutes());
     }
@@ -264,100 +242,6 @@
     return [];
   }
 
-  // ======= SMART COURT FILTER (SAFE) =======
-  function containsCourtN(rec, n){
-    n = Number(n) || 1;
-    if(!rec) return false;
-    var visited = (typeof WeakSet !== "undefined") ? new WeakSet() : null;
-
-    function stringHasCourtN(str, n){
-      if(!str) return false;
-      var s = String(str).toLowerCase();
-      if(s.indexOf("court") === -1) return false;
-
-      if(s.indexOf("court #"+n) >= 0) return true;
-      if(s.indexOf("court "+n)  >= 0) return true;
-      if(s.indexOf("courts "+n) >= 0) return true;
-
-      var rg = /courts?\s*#?\s*(\d+)\s*[-–]\s*#?\s*(\d+)/g;
-      var m;
-      while((m = rg.exec(s)) !== null){
-        var a = +m[1], b = +m[2];
-        if(n >= Math.min(a,b) && n <= Math.max(a,b)) return true;
-      }
-
-      if(s.indexOf(",") >= 0 || s.indexOf("&") >= 0 || s.indexOf("/") >= 0){
-        var listRg = /court(?:s)?[^0-9]*((\d+)(?:\s*[,/&]\s*\d+)*)/gi;
-        var lm;
-        while((lm = listRg.exec(s)) !== null){
-          var nums = lm[1].split(/[,/&]/);
-          for(var i=0;i<nums.length;i++){
-            var num = parseInt(nums[i],10);
-            if(num === n) return true;
-          }
-        }
-      }
-      return false;
-    }
-
-    function keyLooksCourtRelated(k){
-      if(!k) return false;
-      var s = String(k).toLowerCase();
-      return (
-        s.indexOf("court") >= 0 ||
-        s.indexOf("resource") >= 0 ||
-        s.indexOf("facilitycourt") >= 0 ||
-        s.indexOf("courtid") >= 0 ||
-        s.indexOf("court_id") >= 0 ||
-        s.indexOf("resourceid") >= 0 ||
-        s.indexOf("resource_id") >= 0
-      );
-    }
-
-    function scan(value, keyHint){
-      if(value == null) return false;
-      var t = typeof value;
-
-      if(t === "number"){
-        return keyLooksCourtRelated(keyHint) && (value === n);
-      }
-      if(t === "string"){
-        return stringHasCourtN(value, n);
-      }
-      if(Array.isArray(value)){
-        for(var i=0;i<value.length;i++){
-          if(scan(value[i], keyHint)) return true;
-        }
-        return false;
-      }
-      if(t === "object"){
-        if(visited && visited.has(value)) return false;
-        if(visited) visited.add(value);
-        for(var k in value){
-          if(!Object.prototype.hasOwnProperty.call(value,k)) continue;
-          var lowK = k.toLowerCase();
-          if(lowK === "title" || lowK === "eventname" || lowK === "name") continue;
-          if(scan(value[k], k)) return true;
-        }
-      }
-      return false;
-    }
-
-    return scan(rec, "");
-  }
-
-  // ======= CLOCK (minute-synced, huge CPU win) =======
-  function tickClock(){
-    var el = document.getElementById('clock');
-    el.textContent = toLocalNY(new Date());
-
-    var now = new Date();
-    var msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    if(msUntilNextMinute < 250) msUntilNextMinute = 250;
-    setTimeout(tickClock, msUntilNextMinute);
-  }
-
-  // ======= XHR =======
   function xhrJSON(url, headers, timeoutMs, cb){
     try{
       var x = new XMLHttpRequest();
@@ -365,9 +249,7 @@
       x.timeout = timeoutMs||8000;
       if(headers){
         for(var k in headers){
-          if(headers.hasOwnProperty(k)){
-            x.setRequestHeader(k, headers[k]);
-          }
+          if(headers.hasOwnProperty(k)) x.setRequestHeader(k, headers[k]);
         }
       }
       x.onreadystatechange = function(){
@@ -376,7 +258,7 @@
             var data=null;
             try{ data=JSON.parse(x.responseText); }catch(e){ data=null; }
             cb(null, data);
-          } else { cb(new Error("HTTP "+x.status)); }
+          } else cb(new Error("HTTP "+x.status));
         }
       };
       x.ontimeout = function(){ cb(new Error("timeout")); };
@@ -385,13 +267,12 @@
     }catch(e){ cb(e); }
   }
 
-  // ======= UI HELPERS =======
   function setPulse(mode){
     var el = document.getElementById('cno');
     el.className = "val";
-    if(mode === "blue"){ el.className += " pulse-blue"; }
-    else if(mode === "red"){ el.className += " pulse-red"; }
-    else { el.className += " nopulse"; }
+    if(mode === "blue") el.className += " pulse-blue";
+    else if(mode === "red") el.className += " pulse-red";
+    else el.className += " nopulse";
   }
 
   function darkenHex(hex, pct){
@@ -405,7 +286,6 @@
     return "#"+("0"+r.toString(16)).slice(-2)+("0"+g.toString(16)).slice(-2)+("0"+b.toString(16)).slice(-2);
   }
 
-  // mode: "blue" (default), "skill" (skill gradient), "red" (urgent)
   function setBarMode(mode){
     var bar = document.getElementById('bar');
     var cn  = document.getElementById('cn');
@@ -437,7 +317,16 @@
     lblEl.textContent = (cdMode === "next") ? "Time Until" : "Time Left";
   }
 
-  // ======= COUNTDOWN (10s tick except last minute) =======
+  // Clock: minute-synced (low CPU)
+  function tickClock(){
+    document.getElementById('clock').textContent = toLocalNY(new Date());
+    var now = new Date();
+    var msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    if(msUntilNextMinute < 250) msUntilNextMinute = 250;
+    setTimeout(tickClock, msUntilNextMinute);
+  }
+
+  // Countdown: 10s tick except last minute (still shows seconds)
   function startCountdown(targetMs, mode){
     cdTarget = targetMs; cdMode = mode||"none";
     if(cdTimer){ clearTimeout(cdTimer); cdTimer = null; }
@@ -452,12 +341,11 @@
         lbl.textContent = "Time Left";
         setPulse("blue");
         setBarMode("blue");
-        cdTimer = setTimeout(tick, 10000);   // was 1000
+        cdTimer = setTimeout(tick, 10000);
         return;
       }
 
-      var nowMs = Date.now();
-      var diff  = cdTarget - nowMs;
+      var diff  = cdTarget - Date.now();
 
       if(diff > 0){
         if(cdMode === "cur" && diff <= 60000){
@@ -468,9 +356,7 @@
           setBarMode(currentIsSkill ? "skill" : "blue");
         }
 
-        if(out.className.indexOf("expired-msg") !== -1){
-          out.className = "val";
-        }
+        if(out.className.indexOf("expired-msg") !== -1) out.className = "val";
 
         var totalSec = Math.floor(diff/1000);
         var totalMin = Math.floor(diff/60000);
@@ -484,12 +370,9 @@
         }
 
         lbl.textContent = (cdMode === "cur") ? "Time Left" : "Time Until";
-
-        // CPU-safe scheduling:
         cdTimer = setTimeout(tick, (diff <= 60000) ? 1000 : 10000);
 
       } else {
-        // REACHED ZERO
         if (cdMode === "cur") {
           setPulse("red");
           setBarMode("red");
@@ -498,8 +381,7 @@
           out.textContent = "TIME EXPIRED";
 
           var curEl = document.getElementById('curv');
-          if(lastCurName){ curEl.innerHTML = "Time expired — " + lastCurName; }
-          else { curEl.innerHTML = "Time expired"; }
+          curEl.innerHTML = lastCurName ? ("Time expired — " + lastCurName) : "Time expired";
 
           setTimeout(function(){
             setPulse("blue");
@@ -518,15 +400,13 @@
           }, 30000);
 
         } else if (cdMode === "next") {
-          cdTarget = null;
-          cdMode   = "none";
+          cdTarget = null; cdMode = "none";
           out.className = "val";
           out.textContent = "--";
           lbl.textContent = "Time Left";
           setPulse("blue");
           setBarMode("blue");
           try{ refresh(true); }catch(e){}
-
         } else {
           setPulse("blue");
           setBarMode("blue");
@@ -546,7 +426,6 @@
     return "<div class='meta'>"+toLocalNY(d.start)+" - "+toLocalNY(d.end)+"</div>";
   }
 
-  // ===== LEVEL INFO FROM TITLE =====
   function getLevelInfoFromTitle(title){
     var t = (title || "");
     var tLow  = t.toLowerCase();
@@ -584,16 +463,96 @@
     if(x.IsActive === false || x.Active === false) return true;
 
     var statusStr = "";
-    if(typeof x.Status === "string")              statusStr += " " + x.Status;
-    if(typeof x.EventStatus === "string")         statusStr += " " + x.EventStatus;
-    if(typeof x.RegistrationStatus === "string")  statusStr += " " + x.RegistrationStatus;
+    if(typeof x.Status === "string") statusStr += " " + x.Status;
+    if(typeof x.EventStatus === "string") statusStr += " " + x.EventStatus;
+    if(typeof x.RegistrationStatus === "string") statusStr += " " + x.RegistrationStatus;
     statusStr = statusStr.toLowerCase();
-    if(statusStr.indexOf("cancel") >= 0) return true;
+    return (statusStr.indexOf("cancel") >= 0);
+  }
 
+  // ===============================
+  // FAST COURT MATCH (BIGGEST WIN)
+  // ===============================
+  var courtMatchCache = (typeof WeakMap !== "undefined") ? new WeakMap() : null;
+
+  // Common keys CourtReserve might include
+  var COURT_KEYS = [
+    "Court", "CourtNumber", "CourtNo",
+    "CourtId", "CourtID", "FacilityCourtId", "FacilityCourtID",
+    "ResourceId", "ResourceID", "resourceId", "resource_id",
+    "FacilityResourceId", "FacilityResourceID",
+    "FacilityCourt", "FacilityResource"
+  ];
+
+  function fastCourtMatch(rec, n){
+    if(!rec) return false;
+
+    if(courtMatchCache){
+      var cached = courtMatchCache.get(rec);
+      if(typeof cached === "boolean") return cached;
+    }
+
+    // 1) direct numeric id/number check
+    for(var i=0;i<COURT_KEYS.length;i++){
+      var k = COURT_KEYS[i];
+      if(rec[k] != null){
+        var v = rec[k];
+        if(typeof v === "number" && v === n){
+          if(courtMatchCache) courtMatchCache.set(rec, true);
+          return true;
+        }
+        // some APIs store as string "2"
+        if(typeof v === "string" && v.trim() === String(n)){
+          if(courtMatchCache) courtMatchCache.set(rec, true);
+          return true;
+        }
+        // nested object with Number/Id
+        if(typeof v === "object"){
+          if(v.Number === n || v.CourtNumber === n || v.Id === n || v.ID === n){
+            if(courtMatchCache) courtMatchCache.set(rec, true);
+            return true;
+          }
+        }
+      }
+    }
+
+    // 2) resources array patterns
+    var maybeArrays = ["Resources","resources","FacilityResources","FacilityCourts","Courts","courts"];
+    for(var a=0;a<maybeArrays.length;a++){
+      var arr = rec[maybeArrays[a]];
+      if(Array.isArray(arr)){
+        for(var j=0;j<arr.length;j++){
+          var it = arr[j];
+          if(!it) continue;
+          if(it.Number === n || it.CourtNumber === n || it.Id === n || it.ID === n) {
+            if(courtMatchCache) courtMatchCache.set(rec, true);
+            return true;
+          }
+          if(typeof it === "string" && it.toLowerCase().indexOf("court "+n) >= 0){
+            if(courtMatchCache) courtMatchCache.set(rec, true);
+            return true;
+          }
+        }
+      }
+    }
+
+    // 3) LAST resort: limited string search on a few known text fields only (cheap)
+    var textFields = ["ResourceName","CourtName","FacilityCourtName","Location","Notes","Description"];
+    for(var t=0;t<textFields.length;t++){
+      var s = rec[textFields[t]];
+      if(typeof s === "string"){
+        var low = s.toLowerCase();
+        if(low.indexOf("court "+n) >= 0 || low.indexOf("court #"+n) >= 0){
+          if(courtMatchCache) courtMatchCache.set(rec, true);
+          return true;
+        }
+      }
+    }
+
+    if(courtMatchCache) courtMatchCache.set(rec, false);
     return false;
   }
 
-  // ======= RENDER =======
   function render(cur, nxt){
     var curEl = document.getElementById('curv');
     var nxtEl = document.getElementById('nxtv');
@@ -601,48 +560,38 @@
     if(cur){
       lastCurName = cur.name + fmtTime(cur);
 
-      curEl.className = "val";
-      curEl.style.backgroundColor = "";
-      curEl.style.borderRadius = "";
-      curEl.style.padding = "";
-      curEl.style.color = "#ffffff";
-
       var levelInfo = getLevelInfoFromTitle(cur.name || "");
       currentLevelLabel = levelInfo.label;
       currentLevelBg    = levelInfo.overlayBg;
       currentIsSkill    = !!levelInfo.bubbleColor;
 
+      curEl.className = "val";
+      curEl.style.color = "#ffffff";
       curEl.innerHTML = cur.name + fmtTime(cur);
 
       setBarMode(currentIsSkill ? "skill" : "blue");
       startCountdown(cur.end.getTime(), "cur");
-
     } else {
       currentLevelLabel = "";
       currentLevelBg    = "#0c0c0c";
       currentIsSkill    = false;
 
       curEl.className = "val";
-      curEl.style.backgroundColor = "";
-      curEl.style.borderRadius = "";
-      curEl.style.padding = "";
       curEl.style.color = "#ffffff";
       curEl.textContent = "No current event";
 
       setBarMode("blue");
 
-      if(nxt){ startCountdown(nxt.start.getTime(), "next"); }
-      else    { startCountdown(null, "none"); }
+      if(nxt) startCountdown(nxt.start.getTime(), "next");
+      else startCountdown(null, "none");
     }
 
-    if(nxt){ nxtEl.innerHTML = nxt.name + fmtTime(nxt); }
-    else   { nxtEl.textContent = "No upcoming event"; }
+    if(nxt) nxtEl.innerHTML = nxt.name + fmtTime(nxt);
+    else nxtEl.textContent = "No upcoming event";
   }
 
-  // ======= DATA (CLOUDFLARE PROXY) =======
   function buildDayUrls(){
-    var rnd = Date.now();
-    return { proxy: PROXY_BASE + "?court=" + COURT_NO + "&r=" + rnd };
+    return { proxy: PROXY_BASE + "?court=" + COURT_NO + "&r=" + Date.now() };
   }
 
   function normalizeEvent(x){
@@ -668,9 +617,7 @@
     var name = "";
     if(Array.isArray(x.Players) && x.Players.length){
       var arr = [];
-      for(var i=0;i<x.Players.length;i++){
-        arr.push(shortName(x.Players[i]||{}));
-      }
+      for(var i=0;i<x.Players.length;i++) arr.push(shortName(x.Players[i]||{}));
       name = arr.join(", ");
     }
     if(!name && x.ReservationTypeName) name = x.ReservationTypeName;
@@ -704,12 +651,13 @@
       if(b) rs.push(b);
     }
 
+    // filter each kind to this court (FAST)
     var evC = [], rsC = [];
     for(i=0;i<ev.length;i++){
-      if(containsCourtN(ev[i].raw, COURT_NO)) evC.push(ev[i]);
+      if(fastCourtMatch(ev[i].raw, COURT_NO)) evC.push(ev[i]);
     }
     for(i=0;i<rs.length;i++){
-      if(containsCourtN(rs[i].raw, COURT_NO)) rsC.push(rs[i]);
+      if(fastCourtMatch(rs[i].raw, COURT_NO)) rsC.push(rs[i]);
     }
 
     var all = rsC.concat(evC);
@@ -735,7 +683,7 @@
     else render(null, null);
   }
 
-  // ===== POPUP OVERLAY LOOP =====
+  // Overlay loop unchanged
   var infoOverlay    = document.getElementById("infoOverlay");
   var overlayBodyEl  = document.getElementById("overlayBody");
   var overlayBoxEl   = document.getElementById("overlayBox");
@@ -743,7 +691,6 @@
 
   function applyOverlayLevelStyles(){
     if(!overlayBoxEl || !overlayLevelEl) return;
-
     if(currentLevelLabel){
       overlayLevelEl.style.display = "block";
       overlayLevelEl.textContent   = currentLevelLabel;
@@ -763,9 +710,7 @@
     }
     applyOverlayLevelStyles();
     infoOverlay.classList.add("active");
-    setTimeout(function(){
-      infoOverlay.classList.remove("active");
-    }, 10000);
+    setTimeout(function(){ infoOverlay.classList.remove("active"); }, 10000);
   }
 
   function startOverlayMinuteLoop(){
@@ -780,7 +725,6 @@
     }, msUntilNextMinute);
   }
 
-  // ===== INIT =====
   document.getElementById('cno').textContent = String(COURT_NO);
   tickClock();
   refresh();
