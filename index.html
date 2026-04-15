@@ -286,14 +286,12 @@
   var EXCLUDE_EVENT_NAMES = ["Pickleball 101"];
 
   // ── BIRTHDAY CONFIG ───────────────────────────────────────
-  // Add today's birthday members here each morning (or leave empty for no popup)
-  var BIRTHDAY_NAMES = [
-    // "Lisa R.",
-    // "Aman J."
-  ];
-  var BDAY_INTERVAL_MS  = 2 * 60 * 1000;  // show every 15 minutes
+  var BIRTHDAY_NAMES    = [];  // auto-populated from KV via reader Worker
+  var BDAY_READER_URL   = 'https://levelup-birthday-reader-led-screens.s-jackson.workers.dev/';
+  var BDAY_INTERVAL_MS  = 2 * 60 * 1000;  // show popup every 15 minutes
   var BDAY_DURATION_MS  = 10 * 1000;        // show for 10 seconds
   var BDAY_END_BUFFER_MS = 60 * 1000;       // don't show within 60s of event ending
+  var BDAY_FETCH_MS     = 15 * 60 * 1000;  // re-fetch names every 15 minutes
   // ─────────────────────────────────────────────────────────
 
   var refreshDelayMs  = BASE_REFRESH_MS;
@@ -874,13 +872,34 @@
     }, BDAY_DURATION_MS);
   }
 
+  function fetchBirthdayNames(cb){
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', BDAY_READER_URL, true);
+    xhr.timeout = 5000;
+    xhr.onreadystatechange = function(){
+      if(xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300){
+        try{
+          var data = JSON.parse(xhr.responseText);
+          BIRTHDAY_NAMES = Array.isArray(data.names) ? data.names : [];
+        }catch(e){ BIRTHDAY_NAMES = []; }
+        if(cb) cb();
+      }
+    };
+    xhr.ontimeout = xhr.onerror = function(){ BIRTHDAY_NAMES = []; if(cb) cb(); };
+    xhr.send();
+  }
+
   function startBirthdayLoop(){
-    if(!BIRTHDAY_NAMES || BIRTHDAY_NAMES.length===0) return;
-    // Fire first one after 30 seconds so it doesn't blast immediately on load
-    setTimeout(function(){
-      showBirthdayOverlay();
-      setInterval(showBirthdayOverlay, BDAY_INTERVAL_MS);
-    }, 30000);
+    // Fetch names immediately on load, then re-fetch every 15 minutes
+    fetchBirthdayNames(function(){
+      // First popup 30 seconds after load
+      setTimeout(function(){
+        showBirthdayOverlay();
+        setInterval(showBirthdayOverlay, BDAY_INTERVAL_MS);
+      }, 30000);
+    });
+    // Keep names fresh throughout the day
+    setInterval(fetchBirthdayNames, BDAY_FETCH_MS);
   }
 
   // ── INIT ──────────────────────────────────────────────────
